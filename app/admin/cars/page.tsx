@@ -259,7 +259,7 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleImageUpload = async (e: { target: HTMLInputElement }, index: number) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
@@ -373,7 +373,7 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(ev) => handleImageUpload(ev.target, index)}
+                  onChange={(ev) => handleImageUpload(ev, index)}
                   className="absolute inset-0 opacity-0 cursor-pointer"
                   disabled={isUploading}
                   aria-label={`Upload image ${index + 1}`}
