@@ -1,0 +1,364 @@
+// UBs Car Rentals — CRM + Operations (target schema)
+// Migrate from legacy Drizzle tables via scripts/migrate-drizzle-to-prisma.ts
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  STAFF
+}
+
+enum Transmission {
+  MANUAL
+  AUTOMATIC
+}
+
+enum FuelType {
+  PETROL
+  DIESEL
+  ELECTRIC
+  HYBRID
+}
+
+enum VehicleStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum ListingSource {
+  FLEET
+  VENDOR_APPROVED
+}
+
+enum BookingStatus {
+  NEW
+  CONTACTED
+  CONFIRMED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum BookingSource {
+  WEBSITE
+  PHONE
+  WHATSAPP
+  WALK_IN
+  ADMIN
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  LOST
+}
+
+enum LeadSource {
+  CONTACT_FORM
+  WHATSAPP
+  PHONE
+  WEBSITE
+  OTHER
+}
+
+enum VendorSubmissionStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum VendorDocumentType {
+  RC
+  INSURANCE
+  PUC
+  VEHICLE_IMAGE
+  OTHER
+}
+
+enum RevenueType {
+  BOOKING
+  DEPOSIT
+  PENALTY
+  REFUND
+  OTHER
+}
+
+enum NoteEntityType {
+  LEAD
+  BOOKING
+  VEHICLE
+  VENDOR_SUBMISSION
+}
+
+enum ActivityAction {
+  CREATED
+  UPDATED
+  STATUS_CHANGED
+  APPROVED
+  REJECTED
+  DELETED
+  NOTE_ADDED
+  LOGIN
+}
+
+// ─── Admin users (CRM only in Phase 1) ───────────────────────────────────────
+
+model AdminUser {
+  id           Int       @id @default(autoincrement())
+  name         String?
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  role         AdminRole @default(ADMIN)
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  notesWritten     Note[]         @relation("NoteAuthor")
+  activities       ActivityLog[]  @relation("ActivityActor")
+  bookingsCreated  Booking[]      @relation("BookingCreatedBy")
+  vendorReviews    VendorSubmission[] @relation("VendorReviewedBy")
+
+  @@map("admin_users")
+}
+
+// ─── Vehicles (public fleet + approved vendor cars) ──────────────────────────
+
+model Vehicle {
+  id              Int            @id @default(autoincrement())
+  brand           String
+  model           String
+  year            Int
+  slug            String?        @unique
+  pricePerDay     Decimal        @map("price_per_day") @db.Decimal(10, 2)
+  transmission    Transmission
+  fuelType        FuelType       @map("fuel_type")
+  seats           Int
+  location        String
+  city            String?
+  description     String?        @db.Text
+  features        String[]       @default([])
+  registrationNo  String?        @map("registration_no")
+  status          VehicleStatus  @default(ACTIVE)
+  isAvailable     Boolean        @default(true) @map("is_available")
+  isFeatured      Boolean        @default(false) @map("is_featured")
+  source          ListingSource  @default(FLEET)
+  vendorSubmissionId Int?        @unique @map("vendor_submission_id")
+  listingMeta     Json?          @map("listing_meta") // pricing slabs, deposits (from rental-listing)
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  images            VehicleImage[]
+  bookings          Booking[]
+  vendorSubmission  VendorSubmission? @relation(fields: [vendorSubmissionId], references: [id])
+
+  @@index([status, isAvailable])
+  @@index([brand])
+  @@index([location])
+  @@index([isFeatured])
+  @@map("vehicles")
+}
+
+model VehicleImage {
+  id        Int      @id @default(autoincrement())
+  vehicleId Int      @map("vehicle_id")
+  url       String
+  alt       String?
+  sortOrder Int      @default(0) @map("sort_order")
+  isPrimary Boolean  @default(false) @map("is_primary")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, sortOrder])
+  @@map("vehicle_images")
+}
+
+// ─── Booking inquiries (CRM core) ────────────────────────────────────────────
+
+model Booking {
+  id              Int           @id @default(autoincrement())
+  referenceCode   String        @unique @map("reference_code") // e.g. UBS-2026-00042
+  vehicleId       Int?          @map("vehicle_id")
+  status          BookingStatus @default(NEW)
+  source          BookingSource @default(WEBSITE)
+
+  customerName    String        @map("customer_name")
+  customerPhone   String        @map("customer_phone")
+  customerEmail   String?       @map("customer_email")
+  pickupDate      DateTime      @map("pickup_date") @db.Date
+  returnDate      DateTime      @map("return_date") @db.Date
+  pickupLocation  String?       @map("pickup_location")
+  message         String?       @db.Text
+
+  estimatedTotal  Decimal?      @map("estimated_total") @db.Decimal(10, 2)
+  confirmedTotal  Decimal?      @map("confirmed_total") @db.Decimal(10, 2)
+  withDriver      Boolean       @default(false) @map("with_driver")
+
+  createdById     Int?          @map("created_by_id")
+  contactedAt     DateTime?     @map("contacted_at")
+  confirmedAt     DateTime?     @map("confirmed_at")
+  completedAt     DateTime?     @map("completed_at")
+  cancelledAt     DateTime?     @map("cancelled_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  vehicle       Vehicle?    @relation(fields: [vehicleId], references: [id])
+  createdBy     AdminUser?  @relation("BookingCreatedBy", fields: [createdById], references: [id])
+  notes         Note[]
+  revenueEntries RevenueEntry[]
+  activities    ActivityLog[]
+
+  @@index([status])
+  @@index([customerPhone])
+  @@index([pickupDate, returnDate])
+  @@index([createdAt])
+  @@map("bookings")
+}
+
+// ─── Leads (contact + general inquiries) ─────────────────────────────────────
+
+model Lead {
+  id           Int        @id @default(autoincrement())
+  status       LeadStatus @default(NEW)
+  source       LeadSource @default(WEBSITE)
+  name         String
+  phone        String
+  email        String?
+  city         String?
+  message      String?    @db.Text
+  vehicleInterest String? @map("vehicle_interest")
+  convertedBookingId Int? @unique @map("converted_booking_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  notes      Note[]
+  activities ActivityLog[]
+
+  @@index([status])
+  @@index([phone])
+  @@index([createdAt])
+  @@map("leads")
+}
+
+// ─── Vendor submissions (List Your Car) ──────────────────────────────────────
+
+model VendorSubmission {
+  id        Int                    @id @default(autoincrement())
+  status    VendorSubmissionStatus @default(PENDING)
+
+  ownerName    String  @map("owner_name")
+  ownerPhone   String  @map("owner_phone")
+  ownerEmail   String  @map("owner_email")
+  ownerAddress String? @map("owner_address") @db.Text
+  city         String
+
+  brand            String
+  model            String
+  year             Int
+  fuelType         FuelType       @map("fuel_type")
+  transmission     Transmission
+  seats            Int
+  registrationNo   String?        @map("registration_no")
+  pricePerDay      Decimal        @map("price_per_day") @db.Decimal(10, 2)
+  description      String?        @db.Text
+
+  internalNotes    String?        @map("internal_notes") @db.Text
+  rejectionReason  String?        @map("rejection_reason") @db.Text
+  reviewedById     Int?           @map("reviewed_by_id")
+  reviewedAt       DateTime?      @map("reviewed_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  documents   VendorDocument[]
+  reviewedBy  AdminUser? @relation("VendorReviewedBy", fields: [reviewedById], references: [id])
+  approvedVehicle Vehicle?
+  notes       Note[]
+  activities  ActivityLog[]
+
+  @@index([status])
+  @@index([ownerPhone])
+  @@index([createdAt])
+  @@map("vendor_submissions")
+}
+
+model VendorDocument {
+  id           Int                @id @default(autoincrement())
+  submissionId Int                @map("submission_id")
+  type         VendorDocumentType
+  url          String
+  fileName     String?            @map("file_name")
+  createdAt    DateTime           @default(now()) @map("created_at")
+
+  submission VendorSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@map("vendor_documents")
+}
+
+// ─── Revenue tracking (operational, not Stripe) ──────────────────────────────
+
+model RevenueEntry {
+  id          Int         @id @default(autoincrement())
+  bookingId   Int?        @map("booking_id")
+  type        RevenueType @default(BOOKING)
+  amount      Decimal     @db.Decimal(10, 2)
+  currency    String      @default("INR")
+  recordedAt  DateTime    @default(now()) @map("recorded_at")
+  notes       String?     @db.Text
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  booking Booking? @relation(fields: [bookingId], references: [id])
+
+  @@index([recordedAt])
+  @@index([bookingId])
+  @@map("revenue_entries")
+}
+
+// ─── Notes (polymorphic) ─────────────────────────────────────────────────────
+
+model Note {
+  id         Int            @id @default(autoincrement())
+  entityType NoteEntityType @map("entity_type")
+  entityId   Int            @map("entity_id")
+  authorId   Int?           @map("author_id")
+  body       String         @db.Text
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  author AdminUser? @relation("NoteAuthor", fields: [authorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@map("notes")
+}
+
+// ─── Activity audit log ──────────────────────────────────────────────────────
+
+model ActivityLog {
+  id         Int            @id @default(autoincrement())
+  action     ActivityAction
+  entityType NoteEntityType @map("entity_type")
+  entityId   Int            @map("entity_id")
+  actorId    Int?           @map("actor_id")
+  metadata   Json?
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  actor AdminUser? @relation("ActivityActor", fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
