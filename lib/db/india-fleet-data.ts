@@ -7,8 +7,16 @@ function fleetImg(filename: string) {
 }
 
 function listing(
-  base: Omit<CarListingJson, "driverPerDayMin" | "driverPerDayMax" | "securityDepositMin" | "securityDepositMax" | "fuelPolicy"> &
-    Partial<Pick<CarListingJson, "driverPerDayMin" | "driverPerDayMax" | "securityDepositMin" | "securityDepositMax" | "fuelPolicy">>
+  base: Omit<
+    CarListingJson,
+    "driverPerDayMin" | "driverPerDayMax" | "securityDepositMin" | "securityDepositMax" | "fuelPolicy" | "promoTag"
+  > &
+    Partial<
+      Pick<
+        CarListingJson,
+        "driverPerDayMin" | "driverPerDayMax" | "securityDepositMin" | "securityDepositMax" | "fuelPolicy" | "promoTag"
+      >
+    >
 ): CarListingJson {
   const {
     driverPerDayMin = 300,
@@ -16,10 +24,12 @@ function listing(
     securityDepositMin = 2000,
     securityDepositMax = 10000,
     fuelPolicy = DEFAULT_FUEL_POLICY,
+    promoTag = null,
     ...rest
   } = base;
   return {
     ...rest,
+    promoTag,
     driverPerDayMin,
     driverPerDayMax,
     securityDepositMin,
