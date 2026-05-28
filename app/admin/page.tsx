@@ -6,7 +6,7 @@ import { brand } from "@/lib/brand/config";
 import { formatINR, type CarData } from "@/components/car-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Car, ListOrdered, IndianRupee, Users, TrendingUp, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Car, ListOrdered, IndianRupee, Users, TrendingUp, Clock, CheckCircle2, XCircle, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 
 interface BookingRow {
@@ -25,6 +25,15 @@ interface UserRow {
   name: string | null;
   email: string;
   role: string;
+  createdAt: string;
+}
+
+interface LeadRow {
+  id: string;
+  type: string;
+  status: string;
+  name: string;
+  subject: string | null;
   createdAt: string;
 }
 
@@ -68,6 +77,10 @@ export default function AdminOverviewPage() {
     queryKey: ["admin-users"],
     queryFn: () => apiFetch<UserRow[]>("/api/users"),
   });
+  const { data: contactLeads, isLoading: lLoading } = useQuery<LeadRow[]>({
+    queryKey: ["admin-leads", "contact", "all", "", "", ""],
+    queryFn: () => apiFetch<LeadRow[]>("/api/admin/leads?type=contact"),
+  });
 
   const totalRevenue = bookings?.filter(b => b.status !== "cancelled").reduce((s, b) => s + Number(b.totalPrice), 0) ?? 0;
   const confirmed = bookings?.filter(b => b.status === "confirmed").length ?? 0;
@@ -75,6 +88,8 @@ export default function AdminOverviewPage() {
   const available = cars?.filter((c) => c.available && c.listingApprovalStatus === "approved").length ?? 0;
   const pendingListings = cars?.filter((c) => c.listingApprovalStatus === "pending").length ?? 0;
   const recentBookings = bookings?.slice(0, 6) ?? [];
+  const newContactCount = contactLeads?.filter((l) => l.status === "new").length ?? 0;
+  const recentContact = contactLeads?.slice(0, 5) ?? [];
 
   const bookingsByStatus = [
     { label: "Confirmed", count: confirmed, icon: CheckCircle2, color: "text-green-600 bg-green-500/10" },
@@ -86,8 +101,8 @@ export default function AdminOverviewPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header */}
-      <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
-        <h1 className="text-3xl font-display font-bold tracking-tight">Overview</h1>
+      <div className="bg-card p-4 sm:p-6 rounded-2xl border border-border shadow-sm">
+        <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight">Overview</h1>
         <p className="text-muted-foreground mt-1">Welcome back. Here&apos;s what&apos;s happening at {brand.name}.</p>
       </div>
 
@@ -121,11 +136,60 @@ export default function AdminOverviewPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Contact messages */}
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <MessageSquare className="w-5 h-5 text-primary shrink-0" />
+              <h2 className="font-display font-bold text-base sm:text-lg truncate">Contact messages</h2>
+              {newContactCount > 0 && (
+                <span className="text-[10px] font-bold bg-yellow-500/15 text-yellow-600 px-2 py-0.5 rounded-full shrink-0">
+                  {newContactCount} new
+                </span>
+              )}
+            </div>
+            <Link href="/admin/contact" className="text-sm text-primary hover:underline font-medium shrink-0">
+              Open inbox
+            </Link>
+          </div>
+          <div className="divide-y divide-border/50 max-h-[320px] overflow-y-auto">
+            {lLoading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="px-4 sm:px-6 py-4">
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ))
+            ) : recentContact.length === 0 ? (
+              <p className="px-4 sm:px-6 py-8 text-center text-muted-foreground text-sm">
+                No contact form messages yet.
+              </p>
+            ) : (
+              recentContact.map((lead) => (
+                <Link
+                  key={lead.id}
+                  href="/admin/contact"
+                  className="block px-4 sm:px-6 py-4 hover:bg-muted/30 transition-colors"
+                >
+                  <p className="font-semibold text-sm truncate">{lead.name}</p>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
+                    {lead.subject || "Contact enquiry"}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {format(new Date(lead.createdAt), "MMM d, h:mm a")}
+                  </p>
+                </Link>
+              ))
+            )}
+          </div>
+        </div>
+
         {/* Recent bookings */}
         <div className="lg:col-span-2 bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-            <h2 className="font-display font-bold text-lg">Recent Bookings</h2>
-            <Link href="/admin/bookings" className="text-sm text-primary hover:underline font-medium">View all</Link>
+          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border">
+            <h2 className="font-display font-bold text-base sm:text-lg">Recent Bookings</h2>
+            <Link href="/admin/bookings" className="text-sm text-primary hover:underline font-medium shrink-0">
+              View all
+            </Link>
           </div>
           <div className="divide-y divide-border/50">
             {bLoading ? (

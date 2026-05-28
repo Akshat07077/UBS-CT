@@ -8,6 +8,7 @@
     "start": "next start",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx lib/db/seed.ts",
+    "db:create-admin": "tsx scripts/create-admin.ts",
     "db:setup": "tsx scripts/setup-db.ts",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",

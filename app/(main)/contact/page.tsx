@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
+import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -42,10 +44,26 @@ export default function ContactPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const fd = new FormData(e.currentTarget);
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    setSubmitted(true);
+    try {
+      await apiFetch("/api/leads", {
+        method: "POST",
+        body: JSON.stringify({
+          name: String(fd.get("name") || "").trim(),
+          phone: String(fd.get("phone") || "").trim(),
+          email: String(fd.get("email") || "").trim(),
+          subject: String(fd.get("subject") || "").trim(),
+          message: String(fd.get("message") || "").trim(),
+        }),
+      });
+      setSubmitted(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Could not send message";
+      toast({ title: "Send failed", description: msg, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -83,20 +101,23 @@ export default function ContactPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Your Name</Label>
-                  <Input required placeholder="Rahul Sharma" className="rounded-xl h-11" />
+                  <Input name="name" required placeholder="Rahul Sharma" className="rounded-xl h-11" />
                 </div>
                 <div className="space-y-2">
                   <Label>Phone Number</Label>
-                  <Input required placeholder={phoneDisplayPrimary} className="rounded-xl h-11" />
+                  <Input name="phone" required placeholder={phoneDisplayPrimary} className="rounded-xl h-11" />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Email Address</Label>
-                <Input required type="email" placeholder={contact.email} className="rounded-xl h-11" />
+                <Input name="email" required type="email" placeholder={contact.email} className="rounded-xl h-11" />
               </div>
               <div className="space-y-2">
                 <Label>Subject</Label>
-                <select className="flex h-11 w-full rounded-xl border border-border/50 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                <select
+                  name="subject"
+                  className="flex h-11 w-full rounded-xl border border-border/50 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
                   <option>Booking enquiry</option>
                   <option>Cancellation / refund</option>
                   <option>Vehicle availability</option>
@@ -107,7 +128,7 @@ export default function ContactPage() {
               </div>
               <div className="space-y-2">
                 <Label>Message</Label>
-                <Textarea required placeholder="Tell us how we can help..." rows={5} className="rounded-xl resize-none" />
+                <Textarea name="message" required placeholder="Tell us how we can help..." rows={5} className="rounded-xl resize-none" />
               </div>
               <Button type="submit" disabled={loading} className="w-full h-12 rounded-xl font-semibold shadow-lg shadow-primary/20">
                 {loading ? "Sending..." : "Send Message"}

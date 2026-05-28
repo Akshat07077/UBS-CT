@@ -21,6 +21,8 @@ export const bookingStatusEnum = pgEnum("booking_status", ["pending", "confirmed
 export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "failed", "refunded"]);
 /** Guest / peer listings: admin approves before the car appears in public browse. */
 export const listingApprovalEnum = pgEnum("listing_approval_status", ["approved", "pending", "rejected"]);
+export const leadTypeEnum = pgEnum("lead_type", ["contact", "list_car", "booking"]);
+export const leadStatusEnum = pgEnum("lead_status", ["new", "contacted", "closed"]);
 
 export const usersTable = pgTable(
   "users",
@@ -122,6 +124,33 @@ export const bookingsTable = pgTable(
   })
 );
 
+/** Contact form, list-your-car, and booking enquiries for admin CRM. */
+export const leadsTable = pgTable(
+  "leads",
+  {
+    id: serial("id").primaryKey(),
+    type: leadTypeEnum("type").notNull(),
+    status: leadStatusEnum("status").notNull().default("new"),
+    name: text("name").notNull(),
+    email: text("email"),
+    phone: text("phone"),
+    subject: text("subject"),
+    message: text("message"),
+    /** Linked car id (list_car) or booking id (booking). */
+    relatedId: integer("related_id"),
+    metadata: jsonb("metadata").$type<Record<string, unknown> | null>(),
+    adminNotes: text("admin_notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    typeIdx: index("leads_type_idx").on(t.type),
+    statusIdx: index("leads_status_idx").on(t.status),
+    createdIdx: index("leads_created_at_idx").on(t.createdAt),
+    relatedIdx: index("leads_related_id_idx").on(t.relatedId),
+  })
+);
+
 export const paymentsTable = pgTable(
   "payments",
   {
@@ -144,3 +173,6 @@ export type Car = typeof carsTable.$inferSelect;
 export type CarImage = typeof carImagesTable.$inferSelect;
 export type Booking = typeof bookingsTable.$inferSelect;
 export type Payment = typeof paymentsTable.$inferSelect;
+export type Lead = typeof leadsTable.$inferSelect;
+export type LeadType = (typeof leadTypeEnum.enumValues)[number];
+export type LeadStatus = (typeof leadStatusEnum.enumValues)[number];

@@ -34,13 +34,14 @@ export function Navbar() {
 
           <Link
             href="/"
-            className="md:hidden flex flex-1 flex-col items-center justify-center min-w-0 text-center px-1"
+            className="md:hidden flex flex-1 flex-col items-center justify-center min-w-0 max-w-[52vw] sm:max-w-none text-center px-0.5"
             aria-label={brand.name}
           >
-            <span className="font-display font-bold text-sm sm:text-base text-foreground leading-tight truncate max-w-full">
-              {brand.name}
+            <span className="font-display font-bold text-xs sm:text-sm text-foreground leading-tight line-clamp-2 w-full">
+              <span className="sm:hidden">UB&apos;s Car Rental</span>
+              <span className="hidden sm:inline">{brand.name}</span>
             </span>
-            <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.22em] text-primary font-bold truncate max-w-full mt-0.5">
+            <span className="text-[8px] sm:text-[10px] uppercase tracking-[0.14em] sm:tracking-[0.22em] text-primary font-bold truncate w-full mt-0.5">
               {brand.slogan}
             </span>
           </Link>

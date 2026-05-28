@@ -47,7 +47,7 @@ async function seed() {
   console.log("Target:", process.env.DATABASE_URL.replace(/:[^:@]+@/, ":****@"));
 
   const existingUsers = await db.select().from(usersTable);
-  const adminEmail = "admin@ubscarrental.in";
+  const adminEmail = "rindorecar@gmail.com";
   const ubsAdmin = existingUsers.find((u) => u.email === adminEmail);
 
   if (!ubsAdmin) {
@@ -57,7 +57,7 @@ async function seed() {
       password: hashPassword("admin123456"),
       role: "admin",
     });
-    console.log(`✓ Admin created: ${adminEmail} / admin123456`);
+    console.log(`✓ Admin created: ${adminEmail} (set password via npm run db:create-admin)`);
   } else {
     console.log(`✓ Admin ready: ${adminEmail}`);
   }
@@ -111,7 +111,7 @@ async function seed() {
   console.log(`  cars      → ${row.cars}`);
   console.log(`  bookings  → ${row.bookings}`);
   console.log(`  payments  → ${row.payments}`);
-  console.log("\nAdmin login: admin@ubscarrental.in / admin123456");
+  console.log("\nAdmin: rindorecar@gmail.com — run npm run db:create-admin if you need to reset the password");
   console.log("Done.");
   process.exit(0);
 }

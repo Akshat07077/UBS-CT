@@ -138,7 +138,9 @@ function CarDetailPage() {
                   </Badge>
                 )}
               </div>
-              <h1 className="text-3xl md:text-5xl font-display font-extrabold tracking-tight mb-2">{car.brand} {car.model}</h1>
+              <h1 className="text-2xl sm:text-3xl md:text-5xl font-display font-extrabold tracking-tight mb-2 break-words pr-1">
+                {car.brand} {car.model}
+              </h1>
               <p className="text-muted-foreground flex items-center gap-2 text-lg mb-4">
                 <MapPin className="w-5 h-5 text-primary" /> {car.location}
               </p>
@@ -149,16 +151,19 @@ function CarDetailPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-3 gap-3 sm:gap-4 border-t border-border/50 pt-6">
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 border-t border-border/50 pt-6">
                 {[
-                  { icon: Settings2, label: "Transmission", value: car.transmission },
+                  { icon: Settings2, label: "Gearbox", value: car.transmission },
                   { icon: Fuel, label: "Fuel", value: car.fuelType },
-                  { icon: Users, label: "Seats", value: `${car.seats} People` },
+                  { icon: Users, label: "Seats", value: `${car.seats}` },
                 ].map(({ icon: Icon, label, value }) => (
-                  <div key={label} className="flex flex-col gap-2 bg-muted/40 rounded-xl p-4">
-                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">{label}</span>
-                    <div className="flex items-center gap-2 font-semibold capitalize">
-                      <Icon className="w-4 h-4 text-primary" /> {value}
+                  <div key={label} className="flex flex-col gap-1.5 sm:gap-2 bg-muted/40 rounded-xl p-3 sm:p-4 min-w-0 overflow-hidden">
+                    <span className="text-muted-foreground text-[10px] sm:text-xs font-semibold leading-tight truncate">
+                      {label}
+                    </span>
+                    <div className="flex items-center gap-1.5 sm:gap-2 font-semibold capitalize min-w-0">
+                      <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary shrink-0" />
+                      <span className="text-xs sm:text-sm truncate">{value}</span>
                     </div>
                   </div>
                 ))}

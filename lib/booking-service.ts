@@ -5,6 +5,7 @@ import { sumDailyRates, driverDailyMidpoint } from "@/lib/rental-listing";
 import { viewerOwnsCar } from "@/lib/car-response";
 import { DEFAULT_PICKUP_TIME, DEFAULT_RETURN_TIME, isValidBookingTime } from "@/lib/constants/booking-times";
 import type { User } from "@/lib/db/schema";
+import { createLead } from "@/lib/leads";
 
 export function formatBooking(b: typeof bookingsTable.$inferSelect) {
   return {
@@ -125,6 +126,32 @@ export async function createBooking(input: {
       guestAccessToken,
     })
     .returning();
+
+  const customerName =
+    currentUser?.name?.trim() ||
+    guestName?.trim() ||
+    currentUser?.email ||
+    "Customer";
+
+  await createLead({
+    type: "booking",
+    name: customerName,
+    email: guestEmail?.trim() || currentUser?.email || null,
+    phone: guestPhone?.trim() || null,
+    subject: `${car.brand} ${car.model} · ${pickupDate} → ${returnDate}`,
+    message: `Total ₹${totalPrice}${withDriver ? " · with chauffeur" : ""}`,
+    relatedId: booking.id,
+    metadata: {
+      carId,
+      pickupDate,
+      returnDate,
+      pickupTime,
+      returnTime,
+      totalPrice,
+      withDriver: !!withDriver,
+      bookingStatus: booking.status,
+    },
+  });
 
   return {
     booking: formatBooking(booking),

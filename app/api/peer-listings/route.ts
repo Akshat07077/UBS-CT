@@ -6,6 +6,7 @@ import { getSession } from "@/lib/auth";
 import { peerHostListingJson } from "@/lib/rental-listing";
 import { formatAdminCar } from "@/lib/car-response";
 import { getGalleryUrlsByCarIds, replaceCarGallery } from "@/lib/db/car-images";
+import { createLead } from "@/lib/leads";
 
 const createSchema = z.object({
   ownerName: z.string().trim().min(1).max(120),
@@ -121,6 +122,24 @@ export async function POST(req: NextRequest) {
     if (mergedImages.length > 0) {
       await replaceCarGallery(car.id, mergedImages);
     }
+
+    await createLead({
+      type: "list_car",
+      name: ownerName.trim(),
+      email: emailNorm,
+      phone: ownerPhone.trim(),
+      subject: `${brand} ${model} · ${location}`,
+      message: description || null,
+      relatedId: car.id,
+      metadata: {
+        year,
+        pricePerDay,
+        transmission,
+        fuelType,
+        seats,
+        listingApprovalStatus: car.listingApprovalStatus,
+      },
+    });
 
     return NextResponse.json(
       {

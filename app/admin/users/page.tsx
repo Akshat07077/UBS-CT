@@ -23,9 +23,9 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="bg-card p-6 rounded-2xl border border-border shadow-sm flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-display font-bold tracking-tight">Users</h1>
+      <div className="bg-card p-4 sm:p-6 rounded-2xl border border-border shadow-sm flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight">Users</h1>
           <p className="text-muted-foreground mt-1">All registered members on {brand.name}.</p>
         </div>
         <div className="w-12 h-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
@@ -35,7 +35,7 @@ export default function AdminUsersPage() {
 
       <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="w-full min-w-[520px] text-sm text-left">
             <thead className="bg-muted/50 text-muted-foreground font-medium uppercase tracking-wider text-xs">
               <tr>
                 <th className="px-6 py-4">User</th>

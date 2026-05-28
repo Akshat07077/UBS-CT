@@ -70,16 +70,16 @@ export default function AdminCarsPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center bg-card p-6 rounded-2xl border border-border shadow-sm">
-        <div>
-          <h1 className="text-3xl font-display font-bold tracking-tight">Manage Fleet</h1>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between bg-card p-4 sm:p-6 rounded-2xl border border-border shadow-sm">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight">Manage Fleet</h1>
           <p className="text-muted-foreground mt-1">
             Approve guest listings in the <strong className="text-foreground">Approval</strong> column (Approve / Reject), or use the pending filter below.
           </p>
         </div>
         <Dialog open={formOpen} onOpenChange={setFormOpen}>
           <DialogTrigger asChild>
-            <Button onClick={openCreate} className="rounded-xl shadow-md shadow-primary/20 gap-2">
+            <Button onClick={openCreate} className="rounded-xl shadow-md shadow-primary/20 gap-2 w-full sm:w-auto shrink-0">
               <Plus className="w-4 h-4" /> Add Vehicle
             </Button>
           </DialogTrigger>
@@ -146,7 +146,7 @@ export default function AdminCarsPage() {
 
       <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="w-full min-w-[800px] text-sm text-left">
             <thead className="bg-muted/50 text-muted-foreground font-medium uppercase tracking-wider text-xs">
               <tr>
                 <th className="px-6 py-4">Vehicle</th>
