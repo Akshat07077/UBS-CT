@@ -85,7 +85,7 @@ export function Navbar() {
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/dashboard" className="cursor-pointer flex items-center py-2 focus:bg-zinc-900">
-                      <LayoutDashboard className="mr-2 h-4 w-4" /> My Bookings
+                      <LayoutDashboard className="mr-2 h-4 w-4" /> My account
                     </Link>
                   </DropdownMenuItem>
                   {user.role === "admin" && (
@@ -183,7 +183,7 @@ export function Navbar() {
                         : "hover:bg-zinc-900"
                     }`}
                   >
-                    <LayoutDashboard className="w-4 h-4" /> My Bookings
+                    <LayoutDashboard className="w-4 h-4" /> My account
                   </div>
                 </Link>
                 {user.role === "admin" && (
@@ -205,6 +205,11 @@ export function Navbar() {
               </>
             ) : (
               <div className="pt-2 border-t border-zinc-800 mt-2 flex flex-col gap-2">
+                <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-zinc-900 transition-colors">
+                    <LayoutDashboard className="w-4 h-4" /> My account
+                  </div>
+                </Link>
                 <Link href="/login" onClick={() => setMobileOpen(false)}>
                   <Button variant="outline" className="w-full rounded-xl font-semibold">
                     Log in

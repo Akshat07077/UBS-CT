@@ -133,4 +133,25 @@
     background-clip: text;
     color: transparent;
   }
+
+  /* Admin tables — visible horizontal scrollbar */
+  .admin-table-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.55) hsl(var(--muted));
+  }
+  .admin-table-scroll::-webkit-scrollbar {
+    height: 10px;
+  }
+  .admin-table-scroll::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+    border-radius: 999px;
+  }
+  .admin-table-scroll::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.55);
+    border-radius: 999px;
+    border: 2px solid hsl(var(--muted));
+  }
+  .admin-table-scroll::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.75);
+  }
 }

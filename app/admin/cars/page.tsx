@@ -144,18 +144,22 @@ export default function AdminCarsPage() {
         </Button>
       </div>
 
-      <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px] text-sm text-left">
-            <thead className="bg-muted/50 text-muted-foreground font-medium uppercase tracking-wider text-xs">
+      <p className="text-xs text-muted-foreground lg:hidden -mt-4 mb-1">Swipe left on the table to see Edit &amp; Delete →</p>
+
+      <div className="bg-card rounded-2xl border border-border shadow-sm min-w-0">
+        <div className="admin-table-scroll overflow-x-auto overflow-y-visible rounded-2xl">
+          <table className="w-max min-w-full text-sm text-left table-auto border-collapse">
+            <thead className="bg-muted/50 text-muted-foreground font-medium uppercase tracking-wide text-[10px] sm:text-xs">
               <tr>
-                <th className="px-6 py-4">Vehicle</th>
-                <th className="px-6 py-4">Source</th>
-                <th className="px-6 py-4">Approval</th>
-                <th className="px-6 py-4">Specs</th>
-                <th className="px-6 py-4">Price/Day</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-3 py-2.5 text-left whitespace-nowrap min-w-[200px] max-w-[280px]">Vehicle</th>
+                <th className="px-3 py-2.5 whitespace-nowrap">Source</th>
+                <th className="px-3 py-2.5 whitespace-nowrap">Approval</th>
+                <th className="px-3 py-2.5 whitespace-nowrap min-w-[100px]">Specs</th>
+                <th className="px-3 py-2.5 whitespace-nowrap">Price</th>
+                <th className="px-3 py-2.5 whitespace-nowrap">Status</th>
+                <th className="px-3 py-2.5 text-right whitespace-nowrap sticky right-0 z-20 bg-muted/95 backdrop-blur-sm border-l border-border/60 shadow-[-6px_0_10px_-6px_rgba(0,0,0,0.35)] min-w-[120px]">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
@@ -166,28 +170,28 @@ export default function AdminCarsPage() {
                   {viewFilter === "pending" ? "No pending listings." : "No vehicles found. Add one above."}
                 </td></tr>
               ) : displayedCars.map((car) => (
-                <tr key={car.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-12 bg-muted rounded-lg overflow-hidden shrink-0 relative">
+                <tr key={car.id} className="hover:bg-muted/30 transition-colors group">
+                  <td className="px-3 py-2.5 align-middle">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-12 h-9 bg-muted rounded-md overflow-hidden shrink-0 relative">
                         {(car.images?.[0] ?? car.imageUrl) ? (
                           <Image src={car.images?.[0] ?? car.imageUrl!} fill className="object-cover" alt="" />
                         ) : (
                           <CarIcon className="w-full h-full p-2 text-muted-foreground/50" />
                         )}
                       </div>
-                      <div>
-                        <div className="font-bold text-foreground">{car.brand} {car.model}</div>
-                        <div className="text-xs text-muted-foreground">{car.year} • {car.location}</div>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-foreground text-sm truncate">{car.brand} {car.model}</div>
+                        <div className="text-[11px] text-muted-foreground truncate">{car.year} · {car.location}</div>
                         {car.ownerEmail && (
-                          <div className="text-[11px] text-muted-foreground mt-1 max-w-[14rem] truncate" title={car.ownerEmail}>
+                          <div className="text-[10px] text-muted-foreground mt-0.5 max-w-[12rem] truncate" title={car.ownerEmail}>
                             {car.ownerName ?? "Owner"} · {car.ownerEmail}
                           </div>
                         )}
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-2.5 align-middle whitespace-nowrap">
                     {car.hostUserId != null ? (
                       <Badge variant="outline" className="bg-violet-500/10 text-violet-700 border-violet-500/30">Host</Badge>
                     ) : car.ownerEmail ? (
@@ -196,7 +200,7 @@ export default function AdminCarsPage() {
                       <Badge variant="secondary" className="font-normal">Fleet</Badge>
                     )}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-2.5 align-middle whitespace-nowrap">
                     {car.listingApprovalStatus === "pending" && (
                       <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-900">Pending</Badge>
                     )}
@@ -207,33 +211,46 @@ export default function AdminCarsPage() {
                       <Badge variant="destructive" className="shadow-none">Rejected</Badge>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-muted-foreground">
+                  <td className="px-3 py-2.5 align-middle text-muted-foreground whitespace-nowrap text-xs">
                     <div className="capitalize">{car.transmission}</div>
-                    <div className="capitalize">{car.fuelType} • {car.seats} seats</div>
+                    <div className="capitalize">{car.fuelType} · {car.seats} seats</div>
                   </td>
-                  <td className="px-6 py-4 font-bold text-primary">{formatINR(car.pricePerDay)}</td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-2.5 align-middle font-bold text-primary whitespace-nowrap">{formatINR(car.pricePerDay)}</td>
+                  <td className="px-3 py-2.5 align-middle whitespace-nowrap">
                     <Badge variant={car.available ? "default" : "secondary"} className={car.available ? "bg-green-500/10 text-green-600 hover:bg-green-500/20 shadow-none" : ""}>
                       {car.available ? "Available" : "Unavailable"}
                     </Badge>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex flex-wrap justify-end gap-2">
+                  <td className="px-2 py-2 align-middle text-right sticky right-0 z-10 bg-card group-hover:bg-muted/30 border-l border-border/40 shadow-[-6px_0_10px_-6px_rgba(0,0,0,0.35)] whitespace-nowrap">
+                    <div className="flex items-center justify-end gap-1">
                     {car.listingApprovalStatus === "pending" && (
                       <>
-                        <Button size="sm" className="rounded-lg h-8" onClick={() => handleModerate(car.id, "approve")}>
+                        <Button size="sm" className="rounded-md h-7 px-2 text-xs" onClick={() => handleModerate(car.id, "approve")}>
                           Approve
                         </Button>
-                        <Button size="sm" variant="outline" className="rounded-lg h-8" onClick={() => handleModerate(car.id, "reject")}>
+                        <Button size="sm" variant="outline" className="rounded-md h-7 px-2 text-xs" onClick={() => handleModerate(car.id, "reject")}>
                           Reject
                         </Button>
                       </>
                     )}
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(car)} className="hover:bg-primary/10 hover:text-primary rounded-lg">
-                      <Edit className="w-4 h-4" />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEdit(car)}
+                      className="h-8 px-2 rounded-md gap-1 border-primary/30 hover:bg-primary/10 hover:text-primary"
+                      title="Edit vehicle"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                      <span className="text-xs hidden sm:inline">Edit</span>
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(car.id)} className="hover:bg-destructive/10 hover:text-destructive rounded-lg">
-                      <Trash2 className="w-4 h-4" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(car.id)}
+                      className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive rounded-md shrink-0"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                     </div>
                   </td>

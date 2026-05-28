@@ -4,6 +4,14 @@ import { eq } from "drizzle-orm";
 import { getSession, formatUser } from "@/lib/auth";
 import { formatBooking, guestTokenMatches } from "@/lib/booking-service";
 
+function hostOwnsCar(
+  car: typeof carsTable.$inferSelect,
+  user: typeof usersTable.$inferSelect
+) {
+  const email = user.email.toLowerCase();
+  return car.hostUserId === user.id || (car.ownerEmail != null && car.ownerEmail.toLowerCase() === email);
+}
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -25,9 +33,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!allowed && session.userId) {
       const [currentUser] = await db.select().from(usersTable).where(eq(usersTable.id, session.userId)).limit(1);
       if (currentUser) {
-        allowed =
-          currentUser.role === "admin" ||
-          (row.booking.userId != null && row.booking.userId === currentUser.id);
+        const isRenter = row.booking.userId != null && row.booking.userId === currentUser.id;
+        const isHost = row.car != null && hostOwnsCar(row.car, currentUser);
+        allowed = currentUser.role === "admin" || isRenter || isHost;
       }
     }
 
