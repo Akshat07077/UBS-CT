@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Car as CarIcon, Clock, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
 import { formatINR, type CarData } from "@/components/car-card";
+import { canPreviewImageUrl, uploadImageToApi } from "@/lib/upload-client";
 import { INDIA_CITY_OPTIONS, OTHER_CITY_OPTION, PAN_INDIA_CITY } from "@/lib/constants/india-cities";
 
 export default function AdminCarsPage() {
@@ -294,19 +295,20 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
     try {
       setIsUploading(true);
       setUploadingIndex(index);
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/upload/image", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await uploadImageToApi("/api/upload/image", file);
       setGallery((g) => {
         const next = [...g];
         next[index] = data.url;
         return next;
       });
-      toast({ title: "Image uploaded" });
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Upload failed";
+      toast({
+        title: data.placeholder ? "Placeholder used" : "Image uploaded",
+        description: data.placeholder
+          ? "Add real CLOUDINARY_* keys in Vercel env (and remove placeholder CLOUDINARY_URL)."
+          : undefined,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Upload failed";
       toast({ title: "Upload failed", description: msg, variant: "destructive" });
     } finally {
       setIsUploading(false);
@@ -399,8 +401,13 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
                 </Button>
               </div>
               <div className="w-24 h-20 bg-muted rounded-lg border border-border overflow-hidden shrink-0 relative group">
-                {url?.trim() ? (
-                  <Image src={url.trim()} fill className="object-cover" alt="" sizes="96px" />
+                {url?.trim() && canPreviewImageUrl(url) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={url.trim()} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                ) : url?.trim() ? (
+                  <div className="absolute inset-0 flex items-center justify-center p-1 text-[9px] text-center text-muted-foreground">
+                    Invalid URL — use https://… or upload
+                  </div>
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <GripVertical className="w-5 h-5 text-muted-foreground/40" />

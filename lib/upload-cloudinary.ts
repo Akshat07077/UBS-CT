@@ -1,3 +1,4 @@
+import "@/lib/cloudinary-env";
 import { v2 as cloudinary } from "cloudinary";
 
 const MAX_BYTES = 5 * 1024 * 1024;

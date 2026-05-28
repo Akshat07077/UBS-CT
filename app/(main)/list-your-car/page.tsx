@@ -13,6 +13,7 @@ import { toast } from "@/hooks/use-toast";
 import { brand } from "@/lib/brand/config";
 import { INDIA_CITY_OPTIONS, OTHER_CITY_OPTION, PAN_INDIA_CITY } from "@/lib/constants/india-cities";
 import { Car as CarIcon, CheckCircle2, Upload, Plus, X } from "lucide-react";
+import { canPreviewImageUrl, uploadImageToApi } from "@/lib/upload-client";
 
 type SubmitResponse = {
   id: number;
@@ -44,11 +45,7 @@ export default function ListYourCarPage() {
     try {
       setIsUploading(true);
       setUploadingIndex(index);
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/upload/listing-photo", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed");
+      const data = await uploadImageToApi("/api/upload/listing-photo", file);
       setGallery((prev) => {
         const next = [...prev];
         next[index] = data.url;
@@ -57,7 +54,7 @@ export default function ListYourCarPage() {
       toast({
         title: data.placeholder ? "Placeholder image used" : "Photo uploaded",
         description: data.placeholder
-          ? "Add CLOUDINARY_* keys to .env for real uploads (see docs/CLOUDINARY.md)."
+          ? "Add CLOUDINARY_* keys in Vercel (remove placeholder CLOUDINARY_URL)."
           : undefined,
       });
     } catch (err: unknown) {
@@ -195,8 +192,13 @@ export default function ListYourCarPage() {
               {gallery.map((url, index) => (
                 <div key={index} className="flex gap-3 items-start p-3 rounded-xl border border-border/60 bg-card">
                   <div className="w-24 h-20 bg-muted rounded-lg border border-border overflow-hidden shrink-0 relative group">
-                    {url?.trim() ? (
-                      <Image src={url.trim()} fill className="object-cover" alt="Listing preview" sizes="96px" />
+                    {url?.trim() && canPreviewImageUrl(url) ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={url.trim()} alt="Listing preview" className="absolute inset-0 w-full h-full object-cover" />
+                    ) : url?.trim() ? (
+                      <div className="absolute inset-0 flex items-center justify-center p-1 text-[9px] text-center text-muted-foreground">
+                        Paste full https:// URL or upload
+                      </div>
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <CarIcon className="w-6 h-6 text-muted-foreground/35" />
