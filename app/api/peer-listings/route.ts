@@ -24,6 +24,7 @@ const createSchema = z.object({
     .union([z.string().trim().url().max(2000), z.literal(""), z.null()])
     .optional()
     .transform((v) => (v === "" || v === undefined ? null : v)),
+  images: z.array(z.string().trim().url().max(2000)).max(12).optional().default([]),
 });
 
 /** GET ?mine=1 — signed-in user: cars they host or submitted as guest (email match). POST — public guest listing request (pending admin approval). */
@@ -78,7 +79,13 @@ export async function POST(req: NextRequest) {
       location,
       description,
       imageUrl,
+      images,
     } = parsed.data;
+
+    const mergedImages = Array.from(
+      new Set([...(images ?? []), ...(imageUrl ? [imageUrl] : [])].map((u) => u.trim()).filter(Boolean))
+    );
+    const coverImage = mergedImages[0] ?? null;
 
     const emailNorm = ownerEmail.toLowerCase();
     const baseListing = peerHostListingJson(ownerName.trim(), pricePerDay);
@@ -100,7 +107,7 @@ export async function POST(req: NextRequest) {
         seats,
         location,
         description: description || null,
-        imageUrl: imageUrl || null,
+        imageUrl: coverImage,
         listing,
         available: false,
         hostUserId: null,
@@ -111,8 +118,8 @@ export async function POST(req: NextRequest) {
       })
       .returning();
 
-    if (car.imageUrl) {
-      await replaceCarGallery(car.id, [car.imageUrl]);
+    if (mergedImages.length > 0) {
+      await replaceCarGallery(car.id, mergedImages);
     }
 
     return NextResponse.json(

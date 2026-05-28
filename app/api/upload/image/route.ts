@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, usersTable } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
-import { uploadImageFile } from "@/lib/upload-cloudinary";
+import { CLOUDINARY_FOLDERS, uploadImageFile } from "@/lib/upload-cloudinary";
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     const file = formData.get("file") as File | null;
     if (!file) return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
 
-    const result = await uploadImageFile(file, "car-rental");
+    const result = await uploadImageFile(file, CLOUDINARY_FOLDERS.admin);
     return NextResponse.json(result);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Upload failed";

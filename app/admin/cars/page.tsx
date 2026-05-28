@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Car as CarIcon, Clock, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
 import { formatINR, type CarData } from "@/components/car-card";
-import { SERVICE_CITY } from "@/lib/constants/locations";
+import { INDIA_CITY_OPTIONS, OTHER_CITY_OPTION, PAN_INDIA_CITY } from "@/lib/constants/india-cities";
 
 export default function AdminCarsPage() {
   const queryClient = useQueryClient();
@@ -258,6 +258,18 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
   const [isUploading, setIsUploading] = useState(false);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedCity, setSelectedCity] = useState<string>(
+    car?.location && INDIA_CITY_OPTIONS.includes(car.location as (typeof INDIA_CITY_OPTIONS)[number])
+      ? car.location
+      : car?.location
+        ? OTHER_CITY_OPTION
+        : PAN_INDIA_CITY
+  );
+  const [customCity, setCustomCity] = useState<string>(
+    car?.location && !INDIA_CITY_OPTIONS.includes(car.location as (typeof INDIA_CITY_OPTIONS)[number])
+      ? car.location
+      : ""
+  );
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
@@ -290,6 +302,13 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
     e.preventDefault();
     setIsSubmitting(true);
     const fd = new FormData(e.currentTarget);
+    const resolvedCity =
+      selectedCity === OTHER_CITY_OPTION ? customCity.trim() : selectedCity;
+    if (!resolvedCity) {
+      toast({ title: "City required", description: "Please choose a city or type one.", variant: "destructive" });
+      setIsSubmitting(false);
+      return;
+    }
     const urls = gallery.map((u) => u.trim()).filter(Boolean);
     if (urls.length === 0) {
       toast({ title: "Photos required", description: "Add at least one image URL or upload a photo.", variant: "destructive" });
@@ -304,7 +323,7 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
       transmission: fd.get("transmission"),
       fuelType: fd.get("fuelType"),
       seats: parseInt(fd.get("seats") as string),
-      location: fd.get("location"),
+      location: resolvedCity,
       description: fd.get("description"),
       available: fd.get("available") === "true",
       imageUrl: urls[0] ?? null,
@@ -439,14 +458,30 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
         <div className="space-y-2"><Label>Seats</Label><Input name="seats" type="number" defaultValue={car?.seats || 5} required className="rounded-lg" /></div>
         <div className="space-y-2">
           <Label>Location (City)</Label>
-          <select name="location" defaultValue={car?.location || SERVICE_CITY} required className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <option value={SERVICE_CITY}>{SERVICE_CITY}</option>
-            {["Mumbai", "Delhi", "Bengaluru", "Hyderabad", "Chennai", "Pune", "Kolkata", "Jaipur", "Ahmedabad", "Surat", "Goa"]
-              .filter((c) => c !== SERVICE_CITY)
-              .map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
+          <select
+            name="location"
+            required
+            value={selectedCity}
+            onChange={(e) => setSelectedCity(e.target.value)}
+            className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {INDIA_CITY_OPTIONS.map((city) => (
+              <option key={city} value={city}>
+                {city}
+              </option>
+            ))}
+            <option value={OTHER_CITY_OPTION}>Other city (type manually)</option>
           </select>
+          {selectedCity === OTHER_CITY_OPTION && (
+            <Input
+              name="customCity"
+              required
+              value={customCity}
+              onChange={(e) => setCustomCity(e.target.value)}
+              placeholder="Type city"
+              className="rounded-lg"
+            />
+          )}
         </div>
       </div>
 

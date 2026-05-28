@@ -1,7 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { brand } from "@/lib/brand/config";
-import { SERVICE_CITY } from "@/lib/constants/locations";
 import { formatPhoneDisplay } from "@/lib/utils/phone";
 
 export function Footer() {
@@ -24,7 +23,7 @@ export function Footer() {
               <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-primary">{brand.slogan}</p>
             </Link>
             <p className="text-muted-foreground max-w-sm mb-4 text-sm leading-relaxed">
-              {brand.tagline} Serving {SERVICE_CITY} with premium vehicles and attentive service.
+              {brand.tagline} Serving cities across India as vendors list verified vehicles.
             </p>
             <p className="text-xs text-zinc-500 max-w-sm leading-relaxed">{brand.contact.address.full}</p>
           </div>
@@ -37,8 +36,8 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href={`/cars?location=${SERVICE_CITY}`} className="hover:text-primary transition-colors">
-                  Cars in {SERVICE_CITY}
+                <Link href="/cars" className="hover:text-primary transition-colors">
+                  Cities & Cars
                 </Link>
               </li>
               <li>

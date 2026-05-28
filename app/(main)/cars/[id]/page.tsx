@@ -112,10 +112,21 @@ function CarDetailPage() {
     <div className="bg-background pb-16 md:pb-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 md:pt-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-12">
+          {/* 1. Gallery — top on mobile */}
+          {galleryImages.length > 0 && (
+            <div className="order-1 lg:col-span-2">
+              <div className="rounded-2xl overflow-hidden border border-border/50 shadow-lg">
+                <CarImageSlider
+                  images={galleryImages}
+                  alt={`${car.brand} ${car.model}`}
+                  heightClass="h-[min(52vh,440px)] sm:h-[min(56vh,480px)] lg:h-[min(50vh,520px)]"
+                />
+              </div>
+            </div>
+          )}
 
-          {/* Left: Details */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Title Card */}
+          {/* 2. Title + specs */}
+          <div className="order-2 lg:col-span-2">
             <div className="bg-card p-5 md:p-8 rounded-2xl md:rounded-3xl shadow-xl border border-border/50">
               <div className="flex flex-wrap items-center gap-3 mb-4">
                 <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-none px-3 py-1">{car.year}</Badge>
@@ -128,25 +139,17 @@ function CarDetailPage() {
                 )}
               </div>
               <h1 className="text-3xl md:text-5xl font-display font-extrabold tracking-tight mb-2">{car.brand} {car.model}</h1>
-              <p className="text-muted-foreground flex items-center gap-2 text-lg mb-6">
+              <p className="text-muted-foreground flex items-center gap-2 text-lg mb-4">
                 <MapPin className="w-5 h-5 text-primary" /> {car.location}
               </p>
-
-              {/* Photos */}
-              {galleryImages.length > 0 && (
-                <div className="rounded-2xl overflow-hidden border border-border/50 mb-6">
-                  <CarImageSlider images={galleryImages} alt={`${car.brand} ${car.model}`} />
-                </div>
-              )}
               {car.isCommunityListing && (
-                <div className="rounded-xl border border-violet-500/40 bg-violet-950/40 text-violet-50 px-4 py-3 text-sm backdrop-blur-md mb-6">
+                <div className="rounded-xl border border-violet-500/40 bg-violet-950/40 text-violet-50 px-4 py-3 text-sm backdrop-blur-md mb-4">
                   <span className="font-semibold">Community host listing</span>
                   <span className="text-violet-200"> · Same booking flow as fleet cars; host payouts are not wired in this demo.</span>
                 </div>
               )}
 
-              {/* Specs Grid */}
-              <div className="grid grid-cols-3 gap-4 border-t border-border/50 pt-6">
+              <div className="grid grid-cols-3 gap-3 sm:gap-4 border-t border-border/50 pt-6">
                 {[
                   { icon: Settings2, label: "Transmission", value: car.transmission },
                   { icon: Fuel, label: "Fuel", value: car.fuelType },
@@ -161,7 +164,129 @@ function CarDetailPage() {
                 ))}
               </div>
             </div>
+          </div>
 
+          {/* 3. Booking — after gallery + title on mobile; sticky sidebar on desktop */}
+          <div className="order-3 lg:col-span-1 lg:row-start-1 lg:row-span-4 lg:self-start">
+            <div className="bg-card rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-2xl border border-border/50 lg:sticky lg:top-28">
+              <div className="flex items-center justify-between mb-6 gap-3">
+                <div className="min-w-0">
+                  {L ? (
+                    <>
+                      <p className="text-2xl md:text-3xl font-display font-bold text-primary leading-tight">
+                        {formatINR(car.pricePerDay)} – {formatINR(L.pricePerDayMax)}
+                      </p>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Weekday band / day · GST incl.</p>
+                      {todayBand && (
+                        <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
+                          Today: ~{formatINR(todayBand.from)} – {formatINR(todayBand.to)} ({pricingContextLabel(now)})
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-3xl font-display font-bold text-primary">{formatINR(car.pricePerDay)}</p>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Per day · GST incl.</p>
+                    </>
+                  )}
+                </div>
+                {car.available ? (
+                  <span className="text-xs font-semibold text-green-600 dark:text-green-400 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/30 flex items-center gap-1 shrink-0">
+                    <Zap className="w-3 h-3" /> Available
+                  </span>
+                ) : (
+                  <span className="text-xs font-semibold text-destructive bg-destructive/10 px-3 py-1 rounded-full shrink-0">Unavailable</span>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Pickup Date</Label>
+                    <Input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} min={today} className="h-12 rounded-xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Pickup Time</Label>
+                    <Input
+                      type="time"
+                      step={1800}
+                      value={pickupTime}
+                      onChange={(e) => setPickupTime(e.target.value)}
+                      className="h-12 rounded-xl"
+                    />
+                    <p className="text-[11px] text-muted-foreground">Selected: {formatTime12h(pickupTime)}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Return Date</Label>
+                    <Input type="date" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} min={pickupDate || today} className="h-12 rounded-xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Return Time</Label>
+                    <Input
+                      type="time"
+                      step={1800}
+                      value={returnTime}
+                      onChange={(e) => setReturnTime(e.target.value)}
+                      className="h-12 rounded-xl"
+                    />
+                    <p className="text-[11px] text-muted-foreground">Selected: {formatTime12h(returnTime)}</p>
+                  </div>
+                </div>
+
+                {pickupDate && returnDate && (
+                  <p className="text-xs text-muted-foreground rounded-xl bg-muted/40 border border-border/50 px-3 py-2">
+                    <span className="font-semibold text-foreground">Schedule: </span>
+                    {formatBookingDateTime(pickupDate, pickupTime)} → {formatBookingDateTime(returnDate, returnTime)}
+                  </p>
+                )}
+
+                {pickupDate && returnDate && (
+                  <div className="bg-muted/50 rounded-2xl p-5 border border-border/50">
+                    <div className="flex justify-between text-sm mb-3">
+                      <span className="text-muted-foreground">Rental ({days} {days === 1 ? "day" : "days"})</span>
+                      <span className="font-medium">{formatINR(rentalTotal)}</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mb-3">
+                      Nightly rates include weekend &amp; Oct–Mar season uplift when applicable (capped).
+                    </p>
+                    <div className="flex justify-between text-sm mb-3">
+                      <span className="text-muted-foreground">GST & Taxes</span>
+                      <span className="font-medium text-green-600">Included</span>
+                    </div>
+                    <div className="border-t border-border/50 pt-3 flex justify-between items-center">
+                      <span className="font-bold">Estimated total</span>
+                      <span className="font-bold text-xl text-primary">{formatINR(total)}</span>
+                    </div>
+                    {isChecking ? (
+                      <p className="text-xs text-muted-foreground mt-3 text-center">Checking availability...</p>
+                    ) : isAvailable ? (
+                      <p className="text-xs text-green-600 mt-3 flex items-center justify-center gap-1.5 font-medium"><CheckCircle2 className="w-3.5 h-3.5" /> Available for these dates</p>
+                    ) : (
+                      <p className="text-xs text-destructive mt-3 flex items-center justify-center gap-1.5 font-medium"><AlertCircle className="w-3.5 h-3.5" /> Not available for selected dates</p>
+                    )}
+                  </div>
+                )}
+
+                {isOwnListing && (
+                  <p className="text-sm text-amber-800 dark:text-amber-200 bg-amber-500/15 border border-amber-500/30 rounded-xl px-3 py-2 mb-2">
+                    This is your listing. Other renters can book it; use the dashboard to manage it.
+                  </p>
+                )}
+                <Button
+                  size="lg"
+                  className="w-full h-14 rounded-xl text-base font-bold shadow-lg shadow-primary/20"
+                  onClick={handleBookNow}
+                  disabled={!car.available || isOwnListing || isChecking || (!!pickupDate && !!returnDate && !isAvailable)}
+                >
+                  {!car.available ? "Unavailable" : isOwnListing ? "Your listing" : "Book Now"}
+                </Button>
+                <p className="text-xs text-center text-muted-foreground">No login required · Pay online or WhatsApp</p>
+              </div>
+            </div>
+          </div>
+
+          {/* 4. Extra details — below booking on mobile */}
+          <div className="order-4 lg:col-span-2 space-y-6">
             {L && (
               <div className="bg-card p-5 md:p-8 rounded-2xl md:rounded-3xl border border-border/50 space-y-6">
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -296,121 +421,6 @@ function CarDetailPage() {
                   <span className="font-semibold text-foreground">{formatPhonesDisplay([...brand.contact.phones])}</span>
                   {" "}— available 24/7 · {brand.contact.supportNote}.
                 </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Right: Booking Card */}
-          <div className="lg:col-span-1 order-first lg:order-last">
-            <div className="bg-card rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-2xl border border-border/50 lg:sticky lg:top-28">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  {L ? (
-                    <>
-                      <p className="text-2xl md:text-3xl font-display font-bold text-primary leading-tight">
-                        {formatINR(car.pricePerDay)} – {formatINR(L.pricePerDayMax)}
-                      </p>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Weekday band / day · GST incl.</p>
-                      {todayBand && (
-                        <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
-                          Today: ~{formatINR(todayBand.from)} – {formatINR(todayBand.to)} ({pricingContextLabel(now)})
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-3xl font-display font-bold text-primary">{formatINR(car.pricePerDay)}</p>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Per day · GST incl.</p>
-                    </>
-                  )}
-                </div>
-                {car.available
-                  ? <span className="text-xs font-semibold text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-200 flex items-center gap-1"><Zap className="w-3 h-3" /> Available</span>
-                  : <span className="text-xs font-semibold text-destructive bg-destructive/10 px-3 py-1 rounded-full">Unavailable</span>}
-              </div>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Pickup Date</Label>
-                    <Input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} min={today} className="h-12 rounded-xl" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Pickup Time</Label>
-                    <Input
-                      type="time"
-                      step={1800}
-                      value={pickupTime}
-                      onChange={(e) => setPickupTime(e.target.value)}
-                      className="h-12 rounded-xl"
-                    />
-                    <p className="text-[11px] text-muted-foreground">Selected: {formatTime12h(pickupTime)}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Return Date</Label>
-                    <Input type="date" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} min={pickupDate || today} className="h-12 rounded-xl" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Return Time</Label>
-                    <Input
-                      type="time"
-                      step={1800}
-                      value={returnTime}
-                      onChange={(e) => setReturnTime(e.target.value)}
-                      className="h-12 rounded-xl"
-                    />
-                    <p className="text-[11px] text-muted-foreground">Selected: {formatTime12h(returnTime)}</p>
-                  </div>
-                </div>
-
-                {pickupDate && returnDate && (
-                  <p className="text-xs text-muted-foreground rounded-xl bg-muted/40 border border-border/50 px-3 py-2">
-                    <span className="font-semibold text-foreground">Schedule: </span>
-                    {formatBookingDateTime(pickupDate, pickupTime)} → {formatBookingDateTime(returnDate, returnTime)}
-                  </p>
-                )}
-
-                {pickupDate && returnDate && (
-                  <div className="bg-muted/50 rounded-2xl p-5 border border-border/50">
-                    <div className="flex justify-between text-sm mb-3">
-                      <span className="text-muted-foreground">Rental ({days} {days === 1 ? "day" : "days"})</span>
-                      <span className="font-medium">{formatINR(rentalTotal)}</span>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mb-3">
-                      Nightly rates include weekend &amp; Oct–Mar season uplift when applicable (capped).
-                    </p>
-                    <div className="flex justify-between text-sm mb-3">
-                      <span className="text-muted-foreground">GST & Taxes</span>
-                      <span className="font-medium text-green-600">Included</span>
-                    </div>
-                    <div className="border-t border-border/50 pt-3 flex justify-between items-center">
-                      <span className="font-bold">Estimated total</span>
-                      <span className="font-bold text-xl text-primary">{formatINR(total)}</span>
-                    </div>
-                    {isChecking ? (
-                      <p className="text-xs text-muted-foreground mt-3 text-center">Checking availability...</p>
-                    ) : isAvailable ? (
-                      <p className="text-xs text-green-600 mt-3 flex items-center justify-center gap-1.5 font-medium"><CheckCircle2 className="w-3.5 h-3.5" /> Available for these dates</p>
-                    ) : (
-                      <p className="text-xs text-destructive mt-3 flex items-center justify-center gap-1.5 font-medium"><AlertCircle className="w-3.5 h-3.5" /> Not available for selected dates</p>
-                    )}
-                  </div>
-                )}
-
-                {isOwnListing && (
-                  <p className="text-sm text-amber-800 dark:text-amber-200 bg-amber-500/15 border border-amber-500/30 rounded-xl px-3 py-2 mb-2">
-                    This is your listing. Other renters can book it; use the dashboard to manage it.
-                  </p>
-                )}
-                <Button
-                  size="lg"
-                  className="w-full h-14 rounded-xl text-base font-bold shadow-lg shadow-primary/20"
-                  onClick={handleBookNow}
-                  disabled={!car.available || isOwnListing || isChecking || (!!pickupDate && !!returnDate && !isAvailable)}
-                >
-                  {!car.available ? "Unavailable" : isOwnListing ? "Your listing" : "Book Now"}
-                </Button>
-                <p className="text-xs text-center text-muted-foreground">No login required · Pay online or WhatsApp</p>
               </div>
             </div>
           </div>

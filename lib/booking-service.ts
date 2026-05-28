@@ -31,6 +31,8 @@ export async function createBooking(input: {
   guestName?: string;
   guestPhone?: string;
   guestEmail?: string;
+  aadharUrl?: string;
+  drivingLicenseUrl?: string;
   currentUser?: User | null;
 }) {
   const {
@@ -43,6 +45,8 @@ export async function createBooking(input: {
     guestName,
     guestPhone,
     guestEmail,
+    aadharUrl,
+    drivingLicenseUrl,
     currentUser,
   } = input;
 
@@ -51,6 +55,10 @@ export async function createBooking(input: {
   }
 
   const isGuest = !currentUser;
+  if (!aadharUrl?.trim() || !drivingLicenseUrl?.trim()) {
+    throw new BookingError("Please upload your Aadhar card and driving licence", 400);
+  }
+
   if (isGuest) {
     if (!guestName?.trim() || !guestPhone?.trim()) {
       throw new BookingError("Name and phone number are required", 400);
@@ -112,6 +120,8 @@ export async function createBooking(input: {
       guestName: isGuest ? guestName!.trim() : null,
       guestPhone: isGuest ? guestPhone!.trim() : null,
       guestEmail: guestEmail?.trim() || null,
+      aadharUrl: aadharUrl.trim(),
+      drivingLicenseUrl: drivingLicenseUrl.trim(),
       guestAccessToken,
     })
     .returning();

@@ -1,5 +1,5 @@
 "use client";
-import { useState, Suspense } from "react";
+import { useMemo, useState, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { CarCard, type CarData } from "@/components/car-card";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api";
 import { brand } from "@/lib/brand/config";
-import { CITIES, SERVICE_CITY } from "@/lib/constants/locations";
+import { SERVICE_CITY } from "@/lib/constants/locations";
 import { Search, FilterX, Car as CarIcon, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react";
 
 interface Filters {
@@ -126,7 +126,7 @@ export default function CarsPage() {
 function CarsContent() {
   const searchParams = useSearchParams();
   const [filters, setFilters] = useState<Filters>({
-    location: searchParams.get("location") || SERVICE_CITY,
+    location: searchParams.get("location") || undefined,
   });
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -157,6 +157,19 @@ function CarsContent() {
   const cityCount = (city: string) =>
     allCars?.filter((c) => c.location?.toLowerCase() === city.toLowerCase()).length ?? 0;
 
+  const dynamicCities = useMemo(() => {
+    const cityNames = Array.from(
+      new Set(
+        (allCars ?? [])
+          .map((c) => c.location?.trim())
+          .filter((v): v is string => Boolean(v))
+      )
+    );
+    return cityNames
+      .sort((a, b) => a.localeCompare(b))
+      .map((name) => ({ name, emoji: "📍" }));
+  }, [allCars]);
+
   const handleChange = (key: keyof Filters, value: string | number | undefined) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
@@ -181,14 +194,13 @@ function CarsContent() {
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-display font-bold tracking-tight mb-1">Browse Fleet</h1>
         <p className="text-muted-foreground text-sm mb-5">
-          {filters.location === SERVICE_CITY
-            ? `Our fleet in ${SERVICE_CITY}`
-            : filters.location
-              ? `Showing cars in ${filters.location}`
-              : `All vehicles · ${SERVICE_CITY}`}
+          {filters.location
+            ? `Showing cars in ${filters.location}`
+            : `All vehicles · ${SERVICE_CITY}`}
         </p>
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {CITIES.map((city) => {
+        {dynamicCities.length > 0 ? (
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {dynamicCities.map((city) => {
             const count = cityCount(city.name);
             const active = filters.location === city.name;
             return (
@@ -208,8 +220,13 @@ function CarsContent() {
                 </span>
               </button>
             );
-          })}
-        </div>
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No city filters yet — cities will appear automatically when vendors list cars.
+          </p>
+        )}
       </div>
 
       {/* Mobile filter toggle */}

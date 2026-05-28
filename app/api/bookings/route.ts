@@ -27,6 +27,8 @@ function formatRow(row: {
     guestName: row.booking.guestName,
     guestPhone: row.booking.guestPhone,
     guestEmail: row.booking.guestEmail,
+    aadharUrl: row.booking.aadharUrl,
+    drivingLicenseUrl: row.booking.drivingLicenseUrl,
   };
 }
 
@@ -59,7 +61,19 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { carId, pickupDate, returnDate, pickupTime, returnTime, withDriver, guestName, guestPhone, guestEmail } = body;
+    const {
+      carId,
+      pickupDate,
+      returnDate,
+      pickupTime,
+      returnTime,
+      withDriver,
+      guestName,
+      guestPhone,
+      guestEmail,
+      aadharUrl,
+      drivingLicenseUrl,
+    } = body;
 
     if (!carId || !pickupDate || !returnDate) {
       return NextResponse.json({ error: "carId, pickupDate, and returnDate required" }, { status: 400 });
@@ -82,6 +96,8 @@ export async function POST(req: NextRequest) {
       guestName,
       guestPhone,
       guestEmail,
+      aadharUrl,
+      drivingLicenseUrl,
       currentUser,
     });
 

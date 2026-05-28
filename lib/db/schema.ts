@@ -107,6 +107,8 @@ export const bookingsTable = pgTable(
     guestName: text("guest_name"),
     guestPhone: text("guest_phone"),
     guestEmail: text("guest_email"),
+    aadharUrl: text("aadhar_url"),
+    drivingLicenseUrl: text("driving_license_url"),
     /** One-time token for guest to view booking / pay without login. */
     guestAccessToken: text("guest_access_token"),
     createdAt: timestamp("created_at").notNull().defaultNow(),

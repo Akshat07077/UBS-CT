@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/brand-logo";
+import { brand } from "@/lib/brand/config";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { User, LogOut, LayoutDashboard, Settings, Menu, X, Home, MessageSquare, CirclePlus, Car } from "lucide-react";
 import { useState } from "react";
@@ -28,10 +29,23 @@ export function Navbar() {
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-gradient-metal-bar backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16 md:h-20">
-          <BrandLogo size="navbar" />
+        <div className="flex items-center justify-between gap-2 sm:gap-3 h-16 md:h-20">
+          <BrandLogo size="navbar" className="shrink-0" />
 
-          <div className="hidden md:flex items-center gap-8">
+          <Link
+            href="/"
+            className="md:hidden flex flex-1 flex-col items-center justify-center min-w-0 text-center px-1"
+            aria-label={brand.name}
+          >
+            <span className="font-display font-bold text-sm sm:text-base text-foreground leading-tight truncate max-w-full">
+              {brand.name}
+            </span>
+            <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.22em] text-primary font-bold truncate max-w-full mt-0.5">
+              {brand.slogan}
+            </span>
+          </Link>
+
+          <div className="hidden md:flex items-center gap-8 flex-1 justify-center">
             <Link href="/" className={linkClass(pathname === "/")}>
               Home
             </Link>
@@ -46,7 +60,7 @@ export function Navbar() {
             </Link>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-2 md:gap-4 shrink-0">
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

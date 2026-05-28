@@ -60,6 +60,41 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+
+  /* Native picker: dark popup + hide default icon (white Lucide overlay on Input) */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    color-scheme: dark;
+  }
+}
+
+/* Home hero uses raw inputs — same white-icon treatment */
+@layer components {
+  .datetime-field {
+    @apply relative w-full;
+  }
+
+  .datetime-field input[type="date"],
+  .datetime-field input[type="time"] {
+    @apply w-full pr-10 appearance-none;
+    color-scheme: dark;
+  }
+
+  .datetime-field input[type="date"]::-webkit-calendar-picker-indicator,
+  .datetime-field input[type="time"]::-webkit-calendar-picker-indicator {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: 2.5rem;
+    cursor: pointer;
+    opacity: 0;
+  }
+
+  .datetime-field .datetime-field-icon {
+    @apply pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white;
+  }
 }
 
 @layer utilities {

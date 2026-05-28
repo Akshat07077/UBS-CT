@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CarCard, type CarData } from "@/components/car-card";
 import { apiFetch } from "@/lib/api";
 import { brand } from "@/lib/brand/config";
-import { CITIES, SERVICE_CITY } from "@/lib/constants/locations";
+import { SERVICE_CITY } from "@/lib/constants/locations";
 import {
   Shield,
   Clock,
@@ -21,6 +21,7 @@ import {
   Users,
   Headset,
   CheckCircle2,
+  Calendar,
 } from "lucide-react";
 
 const HOME_VIDEO_EMBED =
@@ -88,15 +89,11 @@ export default function Home() {
   // Search widget state
   const today = new Date().toISOString().split("T")[0];
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
-  const [location, setLocation] = useState(SERVICE_CITY);
+  const [location, setLocation] = useState("");
   const [pickupDate, setPickupDate] = useState(today);
   const [pickupTime, setPickupTime] = useState("10:00");
   const [returnDate, setReturnDate] = useState(tomorrow);
   const [returnTime, setReturnTime] = useState("10:00");
-
-  const TIME_SLOTS = Array.from({ length: 24 }, (_, h) =>
-    [`${String(h).padStart(2, "0")}:00`, `${String(h).padStart(2, "0")}:30`]
-  ).flat();
 
   function handleSearch(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -131,13 +128,13 @@ export default function Home() {
                 </span>
               </h2>
               <p className="text-muted-foreground text-base md:text-lg leading-relaxed max-w-xl">
-                Pick your dates in {SERVICE_CITY}, compare verified vehicles with clear INR pricing, and confirm in a few taps.
+                Pick your dates, compare verified vehicles with clear INR pricing, and confirm in a few taps.
                 Whether it&apos;s an airport pickup, a weekend drive, or a chauffeur-backed trip — we keep the process
                 simple from search to handover.
               </p>
               <ul className="space-y-3 pt-1">
                 {[
-                  "Search our Indore fleet with live availability",
+                  "Search live inventory from listed cities",
                   "Transparent pricing — taxes and rental terms upfront",
                   "Flexible pickup & return windows that fit your schedule",
                 ].map((line) => (
@@ -197,7 +194,7 @@ export default function Home() {
 
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20 text-center">
           <span className="inline-flex items-center rounded-full bg-primary/10 text-primary px-4 py-1.5 text-sm font-semibold mb-6 border border-primary/20">
-            🇮🇳 {brand.name} · {SERVICE_CITY}
+            🇮🇳 {brand.name} · Pan-India
           </span>
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-display font-extrabold text-foreground leading-[1.05] tracking-tight mb-4">
             Find Your{" "}
@@ -206,7 +203,7 @@ export default function Home() {
             </span>
           </h1>
           <p className="text-base md:text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
-            Search and book your ideal car in {SERVICE_CITY}. Choose your dates and hit the road.
+            Search and book your ideal car across India. Choose your dates and hit the road.
           </p>
 
           {/* Search card */}
@@ -221,31 +218,30 @@ export default function Home() {
                 <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 uppercase tracking-wide">
                   <MapPin className="w-3.5 h-3.5 text-primary" /> Pickup Location
                 </label>
-                <select
+                <input
+                  type="text"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
+                  placeholder="Enter city (optional)"
                   className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                >
-                  {CITIES.map((c) => (
-                    <option key={c.name} value={c.name}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
 
               {/* Pickup Date */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 uppercase tracking-wide">
-                  <Clock className="w-3.5 h-3.5 text-primary" /> Pickup Date
+                  <Calendar className="w-3.5 h-3.5 text-primary" /> Pickup Date
                 </label>
-                <input
-                  type="date"
-                  value={pickupDate}
-                  min={today}
-                  onChange={(e) => setPickupDate(e.target.value)}
-                  className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
+                <div className="datetime-field">
+                  <input
+                    type="date"
+                    value={pickupDate}
+                    min={today}
+                    onChange={(e) => setPickupDate(e.target.value)}
+                    className="h-11 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                  <Calendar className="datetime-field-icon" aria-hidden />
+                </div>
               </div>
 
               {/* Pickup Time */}
@@ -253,29 +249,33 @@ export default function Home() {
                 <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 uppercase tracking-wide">
                   <Clock className="w-3.5 h-3.5 text-primary" /> Pickup Time
                 </label>
-                <select
-                  value={pickupTime}
-                  onChange={(e) => setPickupTime(e.target.value)}
-                  className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                >
-                  {TIME_SLOTS.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
+                <div className="datetime-field">
+                  <input
+                    type="time"
+                    step={1800}
+                    value={pickupTime}
+                    onChange={(e) => setPickupTime(e.target.value)}
+                    className="h-11 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                  <Clock className="datetime-field-icon" aria-hidden />
+                </div>
               </div>
 
               {/* Return Date */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 uppercase tracking-wide">
-                  <Clock className="w-3.5 h-3.5 text-primary" /> Return Date
+                  <Calendar className="w-3.5 h-3.5 text-primary" /> Return Date
                 </label>
-                <input
-                  type="date"
-                  value={returnDate}
-                  min={pickupDate || today}
-                  onChange={(e) => setReturnDate(e.target.value)}
-                  className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
+                <div className="datetime-field">
+                  <input
+                    type="date"
+                    value={returnDate}
+                    min={pickupDate || today}
+                    onChange={(e) => setReturnDate(e.target.value)}
+                    className="h-11 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                  <Calendar className="datetime-field-icon" aria-hidden />
+                </div>
               </div>
 
               {/* Return Time */}
@@ -283,15 +283,16 @@ export default function Home() {
                 <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 uppercase tracking-wide">
                   <Clock className="w-3.5 h-3.5 text-primary" /> Return Time
                 </label>
-                <select
-                  value={returnTime}
-                  onChange={(e) => setReturnTime(e.target.value)}
-                  className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                >
-                  {TIME_SLOTS.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
+                <div className="datetime-field">
+                  <input
+                    type="time"
+                    step={1800}
+                    value={returnTime}
+                    onChange={(e) => setReturnTime(e.target.value)}
+                    className="h-11 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                  <Clock className="datetime-field-icon" aria-hidden />
+                </div>
               </div>
             </div>
 
@@ -300,7 +301,7 @@ export default function Home() {
                 <Search className="w-4 h-4" /> Search Cars
               </Button>
               <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1.5"><Car className="w-4 h-4 text-primary" /> 7 Cars in Indore</span>
+                <span className="flex items-center gap-1.5"><Car className="w-4 h-4 text-primary" /> Live vendor inventory</span>
                 <span className="flex items-center gap-1.5"><Headset className="w-4 h-4 text-primary" /> 24/7 Support</span>
                 <span className="flex items-center gap-1.5"><Users className="w-4 h-4 text-primary" /> 50K+ Customers</span>
               </div>
@@ -314,9 +315,9 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 text-center">
             {[
-              { icon: Shield, title: "Fully Insured", desc: `Comprehensive insurance coverage included with every rental in ${SERVICE_CITY}.` },
+              { icon: Shield, title: "Fully Insured", desc: "Comprehensive insurance coverage included with every rental." },
               { icon: Headphones, title: "24/7 Support", desc: "Hindi & English support available round the clock. Call us anytime." },
-              { icon: Star, title: "Indore Fleet", desc: "Sonet, Baleno, Fronx, Ertiga, Glanza, Dzire & Swift — maintained for city and outstation trips." },
+              { icon: Star, title: "Pan-India Listings", desc: "Cities and cars expand as verified vendors list vehicles on the platform." },
             ].map(({ icon: Icon, title, desc }) => (
               <div key={title} className="flex flex-col items-center">
                 <div className="w-16 h-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-6">
@@ -336,17 +337,17 @@ export default function Home() {
           <div className="text-center mb-10">
             <h2 className="text-3xl md:text-4xl font-display font-bold mb-3 tracking-tight">Serving {SERVICE_CITY}</h2>
             <p className="text-muted-foreground text-lg">
-              Doorstep delivery and pickup across Indore — airport, railway station, hotels & home.
+              No preset demo cities. New cities appear automatically when vendors add cars there.
             </p>
           </div>
           <div className="flex justify-center">
-            <Link href={`/cars?location=${SERVICE_CITY}`}>
-              <div className="group flex items-center gap-4 p-6 bg-card border border-border/50 rounded-2xl hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer min-w-[240px]">
-                <span className="text-3xl">🌾</span>
+            <Link href="/cars">
+              <div className="group flex items-center gap-4 p-6 bg-card border border-border/50 rounded-2xl hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer min-w-[260px]">
+                <span className="text-3xl">🇮🇳</span>
                 <div>
-                  <p className="font-semibold text-lg group-hover:text-primary transition-colors">{SERVICE_CITY}</p>
+                  <p className="font-semibold text-lg group-hover:text-primary transition-colors">Browse all listed cities</p>
                   <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5" /> 7 vehicles available
+                    <MapPin className="w-3.5 h-3.5" /> City filters auto-generated from listings
                   </p>
                 </div>
               </div>
@@ -362,7 +363,7 @@ export default function Home() {
             <div className="mb-8 md:mb-10">
               <h2 className="text-3xl md:text-4xl font-display font-bold mb-2 tracking-tight">Most Booked</h2>
               <p className="text-muted-foreground text-lg">
-                Budget favourites in {SERVICE_CITY} — clear INR pricing and well-maintained vehicles from {brand.name}.
+                Budget favourites with clear INR pricing and well-maintained vehicles from {brand.name}.
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">

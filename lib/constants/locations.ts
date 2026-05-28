@@ -1,7 +1,12 @@
-/** UB's Car Rental — service area (single city for now). */
+/** UB's Car Rental — pan-India service area. */
 
-export const SERVICE_CITY = "Indore";
+/** Used as a generic fallback label when no city is selected yet. */
+export const SERVICE_CITY = "India";
 
-export const CITIES = [{ name: SERVICE_CITY, emoji: "🌾" }] as const;
+/**
+ * Do not pre-populate demo cities.
+ * Cities should appear from real listed cars/vendors only.
+ */
+export const CITIES: ReadonlyArray<{ name: string; emoji?: string }> = [];
 
-export const CITY_OPTIONS = [SERVICE_CITY] as const;
+export const CITY_OPTIONS: ReadonlyArray<string> = [];

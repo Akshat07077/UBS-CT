@@ -48,6 +48,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       guestName: row.booking.guestName,
       guestPhone: row.booking.guestPhone,
       guestEmail: row.booking.guestEmail,
+      aadharUrl: row.booking.aadharUrl,
+      drivingLicenseUrl: row.booking.drivingLicenseUrl,
     });
   } catch (e) {
     console.error(e);

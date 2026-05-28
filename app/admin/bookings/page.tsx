@@ -25,6 +25,8 @@ interface BookingRow {
   guestName?: string | null;
   guestPhone?: string | null;
   guestEmail?: string | null;
+  aadharUrl?: string | null;
+  drivingLicenseUrl?: string | null;
 }
 
 function getStatusClass(status: string) {
@@ -95,6 +97,20 @@ export default function AdminBookingsPage() {
                     <div className="text-xs text-muted-foreground">
                       {booking.user?.email || booking.guestPhone || booking.guestEmail || "—"}
                     </div>
+                    {(booking.aadharUrl || booking.drivingLicenseUrl) && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {booking.aadharUrl && (
+                          <a href={booking.aadharUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline">
+                            Aadhar
+                          </a>
+                        )}
+                        {booking.drivingLicenseUrl && (
+                          <a href={booking.drivingLicenseUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline">
+                            Licence
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <div className="font-bold text-primary">{booking.car?.brand} {booking.car?.model}</div>

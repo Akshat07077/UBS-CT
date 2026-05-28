@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { CLOUDINARY_FOLDERS, uploadImageFile } from "@/lib/upload-cloudinary";
+import { uploadBookingDocument } from "@/lib/upload-cloudinary";
 
-/** Public upload for guest "List your car" form (no login). */
+/** Public upload for guest booking — Aadhar / driving licence. */
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     if (!file) return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
 
-    const result = await uploadImageFile(file, CLOUDINARY_FOLDERS.listing);
+    const result = await uploadBookingDocument(file);
     return NextResponse.json(result);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Upload failed";

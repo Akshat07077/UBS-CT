@@ -1,7 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Users, Fuel, Settings2, MapPin, Sparkles } from "lucide-react";
 import type { CarListingJson } from "@/lib/rental-listing";
 import { pricingContextLabel, scaledDayBand } from "@/lib/rental-listing";
@@ -48,7 +49,14 @@ export function CarCard({ car }: { car: CarData }) {
   const todayBand = L ? scaledDayBand(car.pricePerDay, L.pricePerDayMax, today) : null;
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-2xl border border-border/50 bg-card shadow-lg shadow-black/5 hover:shadow-xl hover:border-border transition-all duration-300 hover:-translate-y-1">
+    <Link
+      href={`/cars/${car.id}`}
+      className={cn(
+        "group flex flex-col overflow-hidden rounded-2xl border border-border/50 bg-card shadow-lg shadow-black/5",
+        "hover:shadow-xl hover:border-border transition-all duration-300 hover:-translate-y-1",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      )}
+    >
       <div className="relative aspect-[16/10] overflow-hidden bg-muted">
         <Image
           src={(car.images && car.images[0]) || car.imageUrl || defaultImage}
@@ -140,13 +148,16 @@ export function CarCard({ car }: { car: CarData }) {
         </div>
 
         <div className="mt-auto pt-2">
-          <Link href={`/cars/${car.id}`}>
-            <Button className="w-full font-semibold rounded-xl" size="lg" variant={car.available ? "default" : "secondary"}>
-              {car.available ? "View Details" : "View Specs"}
-            </Button>
-          </Link>
+          <span
+            className={cn(
+              buttonVariants({ size: "lg", variant: car.available ? "default" : "secondary" }),
+              "w-full font-semibold rounded-xl pointer-events-none"
+            )}
+          >
+            {car.available ? "View Details" : "View Specs"}
+          </span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

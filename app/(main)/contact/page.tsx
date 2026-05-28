@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Phone, Mail, MapPin, Clock, MessageSquare, CheckCircle2 } from "lucide-react";
 import { brand } from "@/lib/brand/config";
 import { getWhatsAppNumber } from "@/lib/whatsapp";
-import { SERVICE_CITY } from "@/lib/constants/locations";
 import { formatPhoneDisplay } from "@/lib/utils/phone";
 
 const { contact } = brand;
@@ -21,8 +20,8 @@ const WA_HELP_URL = `https://wa.me/${getWhatsAppNumber()}?text=${encodeURICompon
 
 const OFFICES = [
   {
-    city: SERVICE_CITY,
-    emoji: "🌾",
+    city: "India",
+    emoji: "🇮🇳",
     address: contact.address.full,
     phones: contact.phones.map(formatPhoneDisplay),
     hours: contact.hours,
@@ -33,7 +32,7 @@ const FAQS = [
   { q: "What documents do I need to rent a car?", a: "A valid driving licence, Aadhaar card or passport, and a selfie for verification. That's it." },
   { q: "Is there a security deposit?", a: "No security deposit for verified members. First-time renters may need a refundable ₹2,000 hold." },
   { q: "Can I cancel my booking?", a: "Yes — free cancellation up to 24 hours before pickup. After that, a 10% fee applies." },
-  { q: "Do you offer doorstep delivery?", a: `Yes — we deliver across ${SERVICE_CITY} to your home, hotel, office, airport, or railway station.` },
+  { q: "Do you offer doorstep delivery?", a: "Yes — delivery depends on the listed vendor city and service coverage for that booking." },
   { q: "Is fuel included in the price?", a: "No, fuel is not included. The car is delivered with a full tank and should be returned full." },
 ];
 
@@ -122,7 +121,7 @@ export default function ContactPage() {
           {[
             { icon: Phone, label: "24/7 Helpline", value: helplineDisplay, sub: contact.supportNote },
             { icon: Mail, label: "Email Us", value: contact.email, sub: "Reply within 2 hours" },
-            { icon: MapPin, label: "Office", value: contact.address.full, sub: `${SERVICE_CITY}, Madhya Pradesh` },
+            { icon: MapPin, label: "Office", value: contact.address.full, sub: "India" },
             { icon: Clock, label: "Business Hours", value: contact.hours, sub: "Emergency line 24/7" },
           ].map(({ icon: Icon, label, value, sub }) => (
             <div key={label} className="bg-card border border-border rounded-2xl p-5 flex items-start gap-4">
