@@ -90,7 +90,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       updates.listing = {
         ...base,
         promoTag: "Awaiting approval",
-        availabilityNote: "Not visible in search until UB's admin approves your request.",
+        availabilityNote: "Not visible in search until UBs admin approves your request.",
       };
     }
 

@@ -39,7 +39,7 @@ function listing(
 }
 
 const LOC = SERVICE_CITY;
-const SUPPLIER = "UB's Car Rental · Indore";
+const SUPPLIER = "UBs Car sRental";
 
 /** Indore fleet — as listed by operations. */
 export const INDIA_FLEET = [

@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
     const listing = {
       ...baseListing,
       promoTag: "Awaiting approval",
-      availabilityNote: "Not visible in search until UB's admin approves your request.",
+      availabilityNote: "Not visible in search until UBs admin approves your request.",
     };
 
     const [car] = await db
