@@ -1,35 +1,96 @@
-/** Safe JSON parse for upload API responses (avoids vague Safari errors on HTML error pages). */
-export async function uploadImageToApi(
-  endpoint: "/api/upload/image" | "/api/upload/listing-photo",
-  file: File
-): Promise<{ url: string; placeholder?: boolean }> {
-  const fd = new FormData();
-  fd.append("file", file);
+import { formatUploadError, prepareImageForUpload } from "@/lib/image-file";
 
-  const res = await fetch(endpoint, {
-    method: "POST",
-    body: fd,
-    credentials: "include",
-  });
+function apiUrl(path: string): string {
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return `${window.location.origin}${path}`;
+  }
+  return path;
+}
 
+async function parseUploadResponse(res: Response): Promise<{
+  url?: string;
+  error?: string;
+  placeholder?: boolean;
+}> {
   const text = await res.text();
-  let data: { url?: string; error?: string; placeholder?: boolean };
   try {
-    data = text ? JSON.parse(text) : {};
+    return text ? JSON.parse(text) : {};
   } catch {
     if (res.status === 401) {
-      throw new Error("Session expired — please log in again and retry.");
+      throw new Error("Session expired — open the site in your phone browser, log in again, then retry.");
     }
-    throw new Error(
-      "Upload server error. On Vercel, set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET (remove placeholder CLOUDINARY_URL)."
-    );
+    if (res.status === 413) {
+      throw new Error("Photo too large for server. We tried to compress it — pick a smaller image or use Wi‑Fi and retry.");
+    }
+    if (res.status === 403) {
+      throw new Error("Upload not allowed. Please log in as admin on this device.");
+    }
+    if (res.status >= 500) {
+      throw new Error(
+        "Server error — add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET on Vercel (remove placeholder CLOUDINARY_URL), then redeploy."
+      );
+    }
+    if (text.includes("<!DOCTYPE") || text.includes("<html")) {
+      throw new Error(
+        `Upload blocked (${res.status}). On Vercel: set Cloudinary env vars and redeploy. On phone: use Wi‑Fi and a smaller photo.`
+      );
+    }
+    throw new Error(`Upload failed (HTTP ${res.status}). Try again on Wi‑Fi.`);
   }
+}
 
-  if (!res.ok || !data.url) {
-    throw new Error(data.error || "Upload failed");
+/** Car listing / admin gallery photo upload. Uses public listing route (no cookie issues on mobile). */
+export async function uploadImageToApi(
+  endpoint: "/api/upload/image" | "/api/upload/listing-photo" = "/api/upload/listing-photo",
+  file: File
+): Promise<{ url: string; placeholder?: boolean }> {
+  try {
+    const prepared = await prepareImageForUpload(file);
+    const fd = new FormData();
+    fd.append("file", prepared, prepared.name);
+
+    const res = await fetch(apiUrl(endpoint), {
+      method: "POST",
+      body: fd,
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    const data = await parseUploadResponse(res);
+
+    if (!res.ok || !data.url) {
+      throw new Error(data.error || "Upload failed");
+    }
+
+    return { url: data.url, placeholder: data.placeholder };
+  } catch (err) {
+    throw new Error(formatUploadError(err));
   }
+}
 
-  return { url: data.url, placeholder: data.placeholder };
+/** Booking Aadhar / licence upload. */
+export async function uploadBookingDocToApi(file: File): Promise<string> {
+  try {
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const prepared = isPdf ? file : await prepareImageForUpload(file);
+    const fd = new FormData();
+    fd.append("file", prepared, prepared.name);
+
+    const res = await fetch(apiUrl("/api/upload/booking-document"), {
+      method: "POST",
+      body: fd,
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    const data = await parseUploadResponse(res);
+    if (!res.ok || !data.url) {
+      throw new Error(data.error || "Upload failed");
+    }
+    return data.url;
+  } catch (err) {
+    throw new Error(formatUploadError(err));
+  }
 }
 
 export function canPreviewImageUrl(url: string): boolean {

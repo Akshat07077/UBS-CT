@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Car as CarIcon, Clock, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
+import { Plus, Edit, Trash2, Car as CarIcon, Clock, ChevronUp, ChevronDown, GripVertical, Upload } from "lucide-react";
 import { formatINR, type CarData } from "@/components/car-card";
 import { canPreviewImageUrl, uploadImageToApi } from "@/lib/upload-client";
 import { INDIA_CITY_OPTIONS, OTHER_CITY_OPTION, PAN_INDIA_CITY } from "@/lib/constants/india-cities";
@@ -295,7 +295,8 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
     try {
       setIsUploading(true);
       setUploadingIndex(index);
-      const data = await uploadImageToApi("/api/upload/image", file);
+      toast({ title: "Preparing photo…", description: "Compressing for mobile upload." });
+      const data = await uploadImageToApi("/api/upload/listing-photo", file);
       setGallery((g) => {
         const next = [...g];
         next[index] = data.url;
@@ -400,31 +401,43 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
                   <ChevronDown className="w-4 h-4" />
                 </Button>
               </div>
-              <div className="w-24 h-20 bg-muted rounded-lg border border-border overflow-hidden shrink-0 relative group">
+              <div className="w-24 h-20 bg-muted rounded-lg border border-border overflow-hidden shrink-0 relative">
                 {url?.trim() && canPreviewImageUrl(url) ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={url.trim()} alt="" className="absolute inset-0 w-full h-full object-cover" />
                 ) : url?.trim() ? (
                   <div className="absolute inset-0 flex items-center justify-center p-1 text-[9px] text-center text-muted-foreground">
-                    Invalid URL — use https://… or upload
+                    Invalid URL
                   </div>
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <GripVertical className="w-5 h-5 text-muted-foreground/40" />
                   </div>
                 )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(ev) => handleImageUpload(ev, index)}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                  disabled={isUploading}
-                  aria-label={`Upload image ${index + 1}`}
-                />
               </div>
               <div className="flex-1 min-w-0 space-y-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-lg w-full h-9 text-xs"
+                  disabled={isUploading && uploadingIndex !== index}
+                  asChild
+                >
+                  <label className="cursor-pointer flex items-center justify-center gap-1.5">
+                    <Upload className="w-3.5 h-3.5" />
+                    {isUploading && uploadingIndex === index ? "Uploading…" : "Upload photo"}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/heic,image/*"
+                      className="sr-only"
+                      disabled={isUploading}
+                      onChange={(ev) => handleImageUpload(ev, index)}
+                    />
+                  </label>
+                </Button>
                 <Input
-                  placeholder="https://… or upload via thumbnail"
+                  placeholder="Or paste https://…"
                   value={url}
                   onChange={(ev) =>
                     setGallery((g) => {

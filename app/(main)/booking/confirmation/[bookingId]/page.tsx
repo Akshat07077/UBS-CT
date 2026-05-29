@@ -35,6 +35,7 @@ function ConfirmationContent() {
   const { bookingId } = useParams<{ bookingId: string }>();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+  const sandboxMode = searchParams.get("sandbox") === "1";
   const { user } = useAuth();
   const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : "";
 
@@ -68,12 +69,18 @@ function ConfirmationContent() {
         </div>
 
         <h1 className="text-4xl md:text-5xl font-display font-extrabold tracking-tight mb-4">
-          {isPaid ? "Payment Successful!" : "Booking Received!"}
+          {sandboxMode
+            ? "Test booking confirmed!"
+            : isPaid
+              ? "Payment successful!"
+              : "Booking received!"}
         </h1>
         <p className="text-lg text-muted-foreground mb-12 max-w-lg mx-auto">
-          {isPaid
-            ? "Your reservation is confirmed. We'll reach you on the phone number you provided."
-            : "Your booking is pending. Complete payment or wait for our team to confirm on WhatsApp."}
+          {sandboxMode
+            ? "Sandbox mode — no payment was charged. Use this to test the full flow before going live with Stripe."
+            : isPaid
+              ? "Your reservation is confirmed. We'll reach you on the phone number you provided."
+              : "Your booking is pending. Complete payment or wait for our team to confirm on WhatsApp."}
         </p>
 
         <div className="bg-card text-left p-8 rounded-3xl border border-border shadow-xl mb-10">

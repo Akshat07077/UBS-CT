@@ -45,6 +45,7 @@ export default function ListYourCarPage() {
     try {
       setIsUploading(true);
       setUploadingIndex(index);
+      toast({ title: "Preparing photo…", description: "Compressing for upload — please wait." });
       const data = await uploadImageToApi("/api/upload/listing-photo", file);
       setGallery((prev) => {
         const next = [...prev];
@@ -191,36 +192,41 @@ export default function ListYourCarPage() {
             <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
               {gallery.map((url, index) => (
                 <div key={index} className="flex gap-3 items-start p-3 rounded-xl border border-border/60 bg-card">
-                  <div className="w-24 h-20 bg-muted rounded-lg border border-border overflow-hidden shrink-0 relative group">
+                  <div className="w-24 h-20 bg-muted rounded-lg border border-border overflow-hidden shrink-0 relative">
                     {url?.trim() && canPreviewImageUrl(url) ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={url.trim()} alt="Listing preview" className="absolute inset-0 w-full h-full object-cover" />
-                    ) : url?.trim() ? (
-                      <div className="absolute inset-0 flex items-center justify-center p-1 text-[9px] text-center text-muted-foreground">
-                        Paste full https:// URL or upload
-                      </div>
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <CarIcon className="w-6 h-6 text-muted-foreground/35" />
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
-                      <Upload className="w-5 h-5 text-white" />
-                    </div>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif"
-                      onChange={(e) => handleImageUpload(e, index)}
-                      className="absolute inset-0 opacity-0 cursor-pointer"
-                      disabled={isUploading}
-                      aria-label={`Upload image ${index + 1}`}
-                    />
                   </div>
                   <div className="flex-1 min-w-0 space-y-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl w-full h-10"
+                      disabled={isUploading && uploadingIndex !== index}
+                      asChild
+                    >
+                      <label className="cursor-pointer flex items-center justify-center gap-2">
+                        <Upload className="w-4 h-4" />
+                        {isUploading && uploadingIndex === index ? "Uploading…" : "Upload photo"}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/heic,image/*"
+                          className="sr-only"
+                          disabled={isUploading}
+                          onChange={(e) => handleImageUpload(e, index)}
+                        />
+                      </label>
+                    </Button>
                     <Input
                       type="url"
                       className="rounded-xl"
-                      placeholder="https://… or upload from thumbnail"
+                      placeholder="Or paste https://…"
                       value={url}
                       onChange={(ev) =>
                         setGallery((g) => {

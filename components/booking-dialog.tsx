@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import {
   Dialog,
@@ -18,7 +20,7 @@ import { buildBookingWhatsAppUrl } from "@/lib/whatsapp";
 import { formatBookingDateTime } from "@/lib/constants/booking-times";
 import { sumDailyRates, driverDailyMidpoint } from "@/lib/rental-listing";
 import { differenceInDays } from "date-fns";
-import { CreditCard, MessageCircle, UserCheck, CheckCircle2, Upload, IdCard, FileText } from "lucide-react";
+import { CreditCard, MessageCircle, UserCheck, CheckCircle2, Upload, IdCard, FileText, FlaskConical } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
 interface BookingDialogProps {
@@ -31,14 +33,7 @@ interface BookingDialogProps {
   returnTime: string;
 }
 
-async function uploadBookingDoc(file: File) {
-  const fd = new FormData();
-  fd.append("file", file);
-  const res = await fetch("/api/upload/booking-document", { method: "POST", body: fd });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Upload failed");
-  return data.url as string;
-}
+import { uploadBookingDocToApi } from "@/lib/upload-client";
 
 function DocUploadSlot({
   label,
@@ -73,25 +68,15 @@ function DocUploadSlot({
           ) : (
             <Upload className="w-6 h-6 text-muted-foreground/40" />
           )}
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp,application/pdf"
-            className="absolute inset-0 opacity-0 cursor-pointer"
-            disabled={uploading}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) onUpload(f);
-              e.target.value = "";
-            }}
-          />
         </div>
         <div className="flex-1 min-w-0">
-          <Button type="button" variant="outline" size="sm" className="rounded-lg w-full" disabled={uploading} asChild>
-            <label className="cursor-pointer">
-              {uploading ? "Uploading…" : url ? "Replace file" : "Upload photo / PDF"}
+          <Button type="button" variant="outline" size="sm" className="rounded-lg w-full min-h-10" disabled={uploading} asChild>
+            <label className="cursor-pointer flex items-center justify-center gap-2 px-3">
+              <Upload className="w-4 h-4 shrink-0" />
+              {uploading ? "Uploading…" : url ? "Replace file" : "Choose file"}
               <input
                 type="file"
-                accept="image/jpeg,image/png,image/webp,application/pdf"
+                accept="image/jpeg,image/png,image/webp,image/heic,image/*,application/pdf"
                 className="sr-only"
                 disabled={uploading}
                 onChange={(e) => {
@@ -114,7 +99,16 @@ function DocUploadSlot({
 }
 
 export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate, pickupTime, returnTime }: BookingDialogProps) {
+  const router = useRouter();
   const { user } = useAuth();
+  const { data: appConfig } = useQuery({
+    queryKey: ["app-config"],
+    queryFn: () =>
+      apiFetch<{ bookingSandbox: boolean; paymentsEnabled: boolean }>("/api/config/public"),
+    staleTime: 60_000,
+  });
+  const bookingSandbox = appConfig?.bookingSandbox ?? true;
+
   const [name, setName] = useState(user?.name ?? "");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState(user?.email ?? "");
@@ -135,7 +129,7 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
   const handleDocUpload = async (kind: "aadhar" | "license", file: File) => {
     try {
       setUploadingDoc(kind);
-      const url = await uploadBookingDoc(file);
+      const url = await uploadBookingDocToApi(file);
       if (kind === "aadhar") setAadharUrl(url);
       else setLicenseUrl(url);
       toast({ title: kind === "aadhar" ? "Aadhar uploaded" : "Licence uploaded" });
@@ -198,6 +192,25 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
       setBusy("pay");
       const booking = await createBooking();
       const token = booking.guestAccessToken;
+
+      if (bookingSandbox) {
+        await apiFetch(`/api/bookings/${booking.id}/sandbox-confirm`, {
+          method: "POST",
+          body: JSON.stringify({ guestAccessToken: token }),
+        });
+        onOpenChange(false);
+        const qs = new URLSearchParams();
+        if (token) qs.set("token", token);
+        qs.set("sandbox", "1");
+        router.push(`/booking/confirmation/${booking.id}?${qs.toString()}`);
+        toast({
+          title: "Booking confirmed (test)",
+          description: "No payment charged — sandbox mode for testing.",
+        });
+        setBusy(null);
+        return;
+      }
+
       const session = await apiFetch<{ sessionUrl: string }>("/api/payments/create-session", {
         method: "POST",
         body: JSON.stringify({
@@ -207,8 +220,8 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
       });
       window.location.href = session.sessionUrl;
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Could not start payment";
-      toast({ title: "Payment failed", description: msg, variant: "destructive" });
+      const msg = e instanceof Error ? e.message : "Could not complete booking";
+      toast({ title: bookingSandbox ? "Booking failed" : "Payment failed", description: msg, variant: "destructive" });
       setBusy(null);
     }
   };
@@ -361,6 +374,13 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
           </div>
         </div>
 
+        {bookingSandbox && (
+          <p className="text-xs text-center text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2">
+            <FlaskConical className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
+            Test mode — bookings confirm without payment. Set ENABLE_PAYMENTS=true + Stripe keys for live checkout.
+          </p>
+        )}
+
         <div className="flex flex-col gap-3 pt-2">
           <Button
             size="lg"
@@ -368,8 +388,18 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
             onClick={handlePay}
             disabled={!!busy || !!uploadingDoc}
           >
-            <CreditCard className="w-4 h-4 mr-2" />
-            {busy === "pay" ? "Redirecting to payment…" : "Pay now"}
+            {bookingSandbox ? (
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+            ) : (
+              <CreditCard className="w-4 h-4 mr-2" />
+            )}
+            {busy === "pay"
+              ? bookingSandbox
+                ? "Confirming…"
+                : "Redirecting to payment…"
+              : bookingSandbox
+                ? "Confirm booking (test)"
+                : "Pay now"}
           </Button>
           <Button
             size="lg"

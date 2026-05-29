@@ -1,13 +1,33 @@
 /**
  * Feature flags for phased rollout.
- * Phase 1 MVP: payments and customer dashboard disabled.
  */
 
+function envTrue(key: string): boolean {
+  return process.env[key]?.trim().toLowerCase() === "true";
+}
+
+export function isStripeConfigured(): boolean {
+  return Boolean(process.env.STRIPE_SECRET_KEY?.trim());
+}
+
+/** Live Stripe checkout — requires keys + ENABLE_PAYMENTS=true */
+export function isPaymentsEnabled(): boolean {
+  return envTrue("ENABLE_PAYMENTS") && isStripeConfigured();
+}
+
+/**
+ * Test bookings without Stripe: auto-confirm and skip checkout.
+ * On when BOOKING_SANDBOX=true, or when payments are not enabled.
+ */
+export function isBookingSandbox(): boolean {
+  if (envTrue("BOOKING_SANDBOX")) return true;
+  if (envTrue("DISABLE_BOOKING_SANDBOX")) return false;
+  return !isPaymentsEnabled();
+}
+
+/** @deprecated use isPaymentsEnabled() */
 export const features = {
-  /** Stripe checkout + payment webhooks */
-  payments: process.env.ENABLE_PAYMENTS === "true",
-  /** Public user registration */
-  publicRegistration: process.env.ENABLE_PUBLIC_REGISTRATION === "true",
-  /** Customer /dashboard route */
-  customerDashboard: process.env.ENABLE_CUSTOMER_DASHBOARD === "true",
+  payments: isPaymentsEnabled(),
+  publicRegistration: envTrue("ENABLE_PUBLIC_REGISTRATION"),
+  customerDashboard: envTrue("ENABLE_CUSTOMER_DASHBOARD"),
 } as const;
