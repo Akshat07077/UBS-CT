@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -118,6 +118,7 @@ function DocUploadSlot({
 
 export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate, pickupTime, returnTime }: BookingDialogProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { data: appConfig } = useQuery({
     queryKey: ["app-config"],
@@ -244,6 +245,7 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Could not complete booking";
       toast({ title: bookingSandbox ? "Booking failed" : "Payment failed", description: msg, variant: "destructive" });
+      queryClient.invalidateQueries({ queryKey: ["availability", String(car.id)] });
       setBusy(null);
     }
   };
