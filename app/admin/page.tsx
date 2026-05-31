@@ -41,14 +41,14 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
   icon: React.ElementType; label: string; value: string | number; sub?: string; color: string;
 }) {
   return (
-    <div className="bg-card border border-border rounded-2xl p-6 flex items-start gap-4">
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
-        <Icon className="w-6 h-6" />
+    <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 flex items-start gap-3 min-w-0 overflow-hidden">
+      <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
+        <Icon className="w-5 h-5" />
       </div>
-      <div>
-        <p className="text-sm text-muted-foreground font-medium">{label}</p>
-        <p className="text-3xl font-display font-extrabold mt-0.5">{value}</p>
-        {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+      <div className="min-w-0 flex-1">
+        <p className="text-xs sm:text-sm text-muted-foreground font-medium truncate">{label}</p>
+        <p className="text-xl sm:text-2xl font-display font-extrabold mt-0.5 truncate">{value}</p>
+        {sub && <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 line-clamp-2">{sub}</p>}
       </div>
     </div>
   );
@@ -99,43 +99,43 @@ export default function AdminOverviewPage() {
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500 min-w-0 max-w-full">
       {/* Header */}
-      <div className="bg-card p-4 sm:p-6 rounded-2xl border border-border shadow-sm">
+      <div className="bg-card p-4 sm:p-6 rounded-2xl border border-border shadow-sm min-w-0">
         <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight">Overview</h1>
-        <p className="text-muted-foreground mt-1">Welcome back. Here&apos;s what&apos;s happening at {brand.name}.</p>
+        <p className="text-muted-foreground mt-1 text-sm sm:text-base">Welcome back. Here&apos;s what&apos;s happening at {brand.name}.</p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 min-[1280px]:grid-cols-4 gap-3 sm:gap-4 min-w-0">
         {bLoading || cLoading || uLoading ? (
           Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-2xl" />)
         ) : (
           <>
             <StatCard icon={IndianRupee} label="Total Revenue" value={formatINR(totalRevenue)} sub="Excluding cancelled" color="bg-primary/10 text-primary" />
             <StatCard icon={ListOrdered} label="Total Bookings" value={bookings?.length ?? 0} sub={`${pending} pending`} color="bg-yellow-500/10 text-yellow-600" />
-            <StatCard icon={Car} label="Vehicles in system" value={cars?.length ?? 0} sub={`${available} bookable · ${pendingListings} listing review${pendingListings === 1 ? "" : "s"}`} color="bg-green-500/10 text-green-600" />
+            <StatCard icon={Car} label="Vehicles in system" value={cars?.length ?? 0} sub={`${available} bookable · ${pendingListings} pending review`} color="bg-green-500/10 text-green-600" />
             <StatCard icon={Users} label="Registered Users" value={users?.length ?? 0} sub="All time" color="bg-blue-500/10 text-blue-600" />
           </>
         )}
       </div>
 
       {/* Booking status breakdown */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 min-[1280px]:grid-cols-4 gap-3 sm:gap-4 min-w-0">
         {bookingsByStatus.map(({ label, count, icon: Icon, color }) => (
-          <div key={label} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
+          <div key={label} className="bg-card border border-border rounded-2xl p-3 sm:p-4 flex items-center gap-2 sm:gap-3 min-w-0 overflow-hidden">
+            <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
               <Icon className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-xl font-display font-bold">{count}</p>
-              <p className="text-xs text-muted-foreground">{label}</p>
+            <div className="min-w-0">
+              <p className="text-lg sm:text-xl font-display font-bold">{count}</p>
+              <p className="text-[11px] sm:text-xs text-muted-foreground truncate">{label}</p>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 min-[1280px]:grid-cols-2 min-[1536px]:grid-cols-3 gap-4 sm:gap-6 min-w-0">
         {/* Contact messages */}
         <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
           <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border gap-2">
@@ -184,7 +184,7 @@ export default function AdminOverviewPage() {
         </div>
 
         {/* Recent bookings */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+        <div className="min-[1280px]:col-span-2 min-[1536px]:col-span-1 min-[1536px]:order-2 bg-card border border-border rounded-2xl overflow-hidden shadow-sm min-w-0">
           <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border">
             <h2 className="font-display font-bold text-base sm:text-lg">Recent Bookings</h2>
             <Link href="/admin/bookings" className="text-sm text-primary hover:underline font-medium shrink-0">
@@ -202,17 +202,17 @@ export default function AdminOverviewPage() {
             ) : recentBookings.length === 0 ? (
               <p className="px-6 py-8 text-center text-muted-foreground text-sm">No bookings yet.</p>
             ) : recentBookings.map((b) => (
-              <div key={b.id} className="px-6 py-4 flex items-center gap-4 hover:bg-muted/30 transition-colors">
-                <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0 font-mono text-xs font-bold">
+              <div key={b.id} className="px-4 sm:px-6 py-4 flex items-center gap-3 sm:gap-4 hover:bg-muted/30 transition-colors min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0 font-mono text-[10px] sm:text-xs font-bold">
                   #{b.id}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm truncate">{b.car?.brand} {b.car?.model}</p>
                   <p className="text-xs text-muted-foreground truncate">{b.user?.name || b.user?.email}</p>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="font-bold text-sm text-primary">{formatINR(b.totalPrice)}</p>
-                  <Badge variant="outline" className={`text-xs capitalize mt-1 ${getStatusClass(b.status)}`}>{b.status}</Badge>
+                <div className="text-right shrink-0 max-w-[40%]">
+                  <p className="font-bold text-xs sm:text-sm text-primary truncate">{formatINR(b.totalPrice)}</p>
+                  <Badge variant="outline" className={`text-[10px] capitalize mt-1 ${getStatusClass(b.status)}`}>{b.status}</Badge>
                 </div>
               </div>
             ))}
@@ -220,12 +220,12 @@ export default function AdminOverviewPage() {
         </div>
 
         {/* Fleet availability */}
-        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-            <h2 className="font-display font-bold text-lg">Fleet Status</h2>
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm min-w-0 min-[1536px]:order-3">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border gap-2">
+            <h2 className="font-display font-bold text-base sm:text-lg truncate">Fleet Status</h2>
             <Link href="/admin/cars" className="text-sm text-primary hover:underline font-medium">Manage</Link>
           </div>
-          <div className="p-6 space-y-4">
+          <div className="p-4 sm:p-6 space-y-4">
             {cLoading ? (
               Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-lg" />)
             ) : (

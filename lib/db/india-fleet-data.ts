@@ -1,6 +1,5 @@
 import type { CarListingJson } from "@/lib/rental-listing";
 import { DEFAULT_FUEL_POLICY } from "@/lib/rental-listing";
-import { SERVICE_CITY } from "@/lib/constants/locations";
 
 function fleetImg(filename: string) {
   return `/imagess/${encodeURIComponent(filename)}`;
@@ -38,7 +37,7 @@ function listing(
   };
 }
 
-const LOC = SERVICE_CITY;
+const LOC = "Indore";
 const SUPPLIER = "UBs Car sRental";
 
 /** Indore fleet — as listed by operations. */

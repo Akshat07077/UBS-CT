@@ -49,7 +49,12 @@ export async function GET(req: NextRequest) {
       conditions.length > 0 ? await baseQuery.where(and(...conditions)) : await baseQuery;
 
     const ids = cars.map((c) => c.id);
-    const galleryMap = await getGalleryUrlsByCarIds(ids);
+    let galleryMap = new Map<number, string[]>();
+    try {
+      galleryMap = await getGalleryUrlsByCarIds(ids);
+    } catch (galleryErr) {
+      console.error("Car gallery load failed (car_images table missing or DB error):", galleryErr);
+    }
 
     if (moderationAll) {
       return NextResponse.json(cars.map((c) => formatAdminCar(c, undefined, galleryMap.get(c.id) ?? null)));
@@ -62,8 +67,15 @@ export async function GET(req: NextRequest) {
     }
     return NextResponse.json(cars.map((c) => formatPublicCar(c, viewer, galleryMap.get(c.id) ?? null)));
   } catch (e) {
-    console.error(e);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("GET /api/cars failed:", e);
+    const message = e instanceof Error ? e.message : "Internal server error";
+    const hint =
+      message.includes("DATABASE_URL") || message.includes("connect")
+        ? "Check DATABASE_URL on Vercel and run npm run db:push"
+        : message.includes("car_images") || message.includes("relation") || message.includes("does not exist")
+          ? "Database schema out of date — run npm run db:push then npm run db:seed"
+          : undefined;
+    return NextResponse.json({ error: hint ?? "Internal server error" }, { status: 500 });
   }
 }
 
