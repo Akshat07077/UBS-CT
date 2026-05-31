@@ -74,12 +74,19 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!currentUser || currentUser.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const { id } = await params;
-    const { status } = await req.json();
-    if (!status) return NextResponse.json({ error: "Status required" }, { status: 400 });
+    const body = await req.json();
+    const { status, adminNotes } = body;
+    if (!status && adminNotes === undefined) {
+      return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+    }
+
+    const patch: { status?: typeof bookingsTable.$inferInsert.status; adminNotes?: string | null } = {};
+    if (status) patch.status = status;
+    if (adminNotes !== undefined) patch.adminNotes = adminNotes?.trim() || null;
 
     const [booking] = await db
       .update(bookingsTable)
-      .set({ status })
+      .set(patch)
       .where(eq(bookingsTable.id, Number(id)))
       .returning();
     if (!booking) return NextResponse.json({ error: "Booking not found" }, { status: 404 });

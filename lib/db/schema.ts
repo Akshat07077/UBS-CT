@@ -18,6 +18,8 @@ export const userRoleEnum = pgEnum("user_role", ["user", "admin"]);
 export const transmissionEnum = pgEnum("transmission", ["manual", "automatic"]);
 export const fuelTypeEnum = pgEnum("fuel_type", ["petrol", "diesel", "electric", "hybrid"]);
 export const bookingStatusEnum = pgEnum("booking_status", ["pending", "confirmed", "cancelled", "completed"]);
+/** website = blocks public availability; manual = admin-only calendar entry (offline booking). */
+export const bookingSourceEnum = pgEnum("booking_source", ["website", "manual"]);
 export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "failed", "refunded"]);
 /** Guest / peer listings: admin approves before the car appears in public browse. */
 export const listingApprovalEnum = pgEnum("listing_approval_status", ["approved", "pending", "rejected"]);
@@ -106,6 +108,8 @@ export const bookingsTable = pgTable(
     withDriver: boolean("with_driver").notNull().default(false),
     driverPrice: numeric("driver_price", { precision: 10, scale: 2 }).notNull().default("0"),
     status: bookingStatusEnum("status").notNull().default("pending"),
+    source: bookingSourceEnum("source").notNull().default("website"),
+    adminNotes: text("admin_notes"),
     guestName: text("guest_name"),
     guestPhone: text("guest_phone"),
     guestEmail: text("guest_email"),
@@ -119,6 +123,7 @@ export const bookingsTable = pgTable(
     carIdx: index("bookings_car_id_idx").on(t.carId),
     userIdx: index("bookings_user_id_idx").on(t.userId),
     statusIdx: index("bookings_status_idx").on(t.status),
+    sourceIdx: index("bookings_source_idx").on(t.source),
     datesIdx: index("bookings_dates_idx").on(t.pickupDate, t.returnDate),
     guestTokenIdx: uniqueIndex("bookings_guest_token_idx").on(t.guestAccessToken),
   })
@@ -176,3 +181,4 @@ export type Payment = typeof paymentsTable.$inferSelect;
 export type Lead = typeof leadsTable.$inferSelect;
 export type LeadType = (typeof leadTypeEnum.enumValues)[number];
 export type LeadStatus = (typeof leadStatusEnum.enumValues)[number];
+export type BookingSource = (typeof bookingSourceEnum.enumValues)[number];

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, bookingsTable, carsTable } from "@/lib/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import { websiteAvailabilityConflictConditions } from "@/lib/booking-availability";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -20,13 +21,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "pickup_date and return_date required" }, { status: 400 });
     }
 
-    const conflicting = await db.select().from(bookingsTable).where(
-      and(
-        eq(bookingsTable.carId, carId),
-        sql`${bookingsTable.status} NOT IN ('cancelled')`,
-        sql`NOT (${bookingsTable.returnDate} < ${pickup_date} OR ${bookingsTable.pickupDate} > ${return_date})`
-      )
-    );
+    const conflicting = await db
+      .select()
+      .from(bookingsTable)
+      .where(websiteAvailabilityConflictConditions(carId, pickup_date, return_date));
 
     return NextResponse.json({ available: conflicting.length === 0, conflictingBookings: conflicting.length });
   } catch (e) {

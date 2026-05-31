@@ -1,9 +1,10 @@
 import crypto from "crypto";
 import { db, bookingsTable, carsTable, usersTable } from "@/lib/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { sumDailyRates, driverDailyMidpoint } from "@/lib/rental-listing";
 import { viewerOwnsCar } from "@/lib/car-response";
 import { DEFAULT_PICKUP_TIME, DEFAULT_RETURN_TIME, isValidBookingTime } from "@/lib/constants/booking-times";
+import { websiteAvailabilityConflictConditions } from "@/lib/booking-availability";
 import type { User } from "@/lib/db/schema";
 import { createLead } from "@/lib/leads";
 
@@ -86,13 +87,10 @@ export async function createBooking(input: {
     throw new BookingError("You cannot book your own listing", 400);
   }
 
-  const conflicting = await db.select().from(bookingsTable).where(
-    and(
-      eq(bookingsTable.carId, carId),
-      sql`${bookingsTable.status} NOT IN ('cancelled')`,
-      sql`NOT (${bookingsTable.returnDate} < ${pickupDate} OR ${bookingsTable.pickupDate} > ${returnDate})`
-    )
-  );
+  const conflicting = await db
+    .select()
+    .from(bookingsTable)
+    .where(websiteAvailabilityConflictConditions(carId, pickupDate, returnDate));
   if (conflicting.length > 0) {
     throw new BookingError("Car is already booked for the selected dates", 400);
   }
@@ -124,6 +122,7 @@ export async function createBooking(input: {
       aadharUrl: aadharUrl.trim(),
       drivingLicenseUrl: drivingLicenseUrl.trim(),
       guestAccessToken,
+      source: "website",
     })
     .returning();
 
@@ -158,6 +157,82 @@ export async function createBooking(input: {
     guestAccessToken,
     car,
   };
+}
+
+/** Admin: offline / phone / walk-in booking — shown on calendar only, does not block website dates. */
+export async function createManualBooking(input: {
+  carId: number;
+  pickupDate: string;
+  returnDate: string;
+  pickupTime?: string;
+  returnTime?: string;
+  guestName: string;
+  guestPhone?: string;
+  guestEmail?: string;
+  totalPrice?: number;
+  withDriver?: boolean;
+  status?: "pending" | "confirmed" | "completed" | "cancelled";
+  adminNotes?: string;
+}) {
+  const {
+    carId,
+    pickupDate,
+    returnDate,
+    pickupTime = DEFAULT_PICKUP_TIME,
+    returnTime = DEFAULT_RETURN_TIME,
+    guestName,
+    guestPhone,
+    guestEmail,
+    totalPrice: totalOverride,
+    withDriver,
+    status = "confirmed",
+    adminNotes,
+  } = input;
+
+  if (!guestName?.trim()) throw new BookingError("Customer name is required", 400);
+  if (!isValidBookingTime(pickupTime) || !isValidBookingTime(returnTime)) {
+    throw new BookingError("Invalid pickup or return time", 400);
+  }
+
+  const pickup = new Date(pickupDate);
+  const returnD = new Date(returnDate);
+  if (returnD <= pickup) throw new BookingError("Return date must be after pickup date", 400);
+
+  const [car] = await db.select().from(carsTable).where(eq(carsTable.id, carId)).limit(1);
+  if (!car) throw new BookingError("Car not found", 404);
+
+  const days = Math.ceil((returnD.getTime() - pickup.getTime()) / (1000 * 60 * 60 * 24));
+  const rentalTotal = sumDailyRates(pickupDate, returnDate, Number(car.pricePerDay));
+  const driverRate = driverDailyMidpoint(car.listing);
+  const driverPrice = withDriver && driverRate > 0 ? days * driverRate : 0;
+  const totalPrice =
+    totalOverride != null && Number.isFinite(totalOverride) ? totalOverride : rentalTotal + driverPrice;
+
+  const [booking] = await db
+    .insert(bookingsTable)
+    .values({
+      userId: null,
+      carId,
+      pickupDate,
+      returnDate,
+      pickupTime,
+      returnTime,
+      totalPrice: String(totalPrice),
+      withDriver: !!withDriver,
+      driverPrice: String(driverPrice),
+      status,
+      source: "manual",
+      adminNotes: adminNotes?.trim() || null,
+      guestName: guestName.trim(),
+      guestPhone: guestPhone?.trim() || null,
+      guestEmail: guestEmail?.trim() || null,
+      aadharUrl: null,
+      drivingLicenseUrl: null,
+      guestAccessToken: null,
+    })
+    .returning();
+
+  return formatBooking(booking);
 }
 
 export class BookingError extends Error {

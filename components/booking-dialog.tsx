@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import Image from "next/image";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +21,7 @@ import { sumDailyRates, driverDailyMidpoint } from "@/lib/rental-listing";
 import { differenceInDays } from "date-fns";
 import { CreditCard, MessageCircle, UserCheck, CheckCircle2, Upload, IdCard, FileText, FlaskConical } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { canPreviewImageUrl, uploadBookingDocToApi } from "@/lib/upload-client";
 
 interface BookingDialogProps {
   open: boolean;
@@ -32,8 +32,6 @@ interface BookingDialogProps {
   pickupTime: string;
   returnTime: string;
 }
-
-import { uploadBookingDocToApi } from "@/lib/upload-client";
 
 function DocUploadSlot({
   label,
@@ -51,44 +49,64 @@ function DocUploadSlot({
   icon: typeof IdCard;
 }) {
   const isPdf = url.toLowerCase().includes(".pdf");
+  const inputId = `doc-${label.replace(/\s+/g, "-").toLowerCase()}`;
+
   return (
-    <div className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-2">
+    <div className="rounded-xl border border-border/60 bg-muted/20 p-3 sm:p-4 space-y-2">
       <div className="flex items-center gap-2">
         <Icon className="w-4 h-4 text-primary shrink-0" />
-        <Label className="text-sm font-semibold">{label}</Label>
-        {url && <CheckCircle2 className="w-4 h-4 text-green-500 ml-auto shrink-0" />}
+        <Label htmlFor={inputId} className="text-sm font-semibold cursor-pointer">
+          {label}
+        </Label>
+        {url && <CheckCircle2 className="w-4 h-4 text-green-500 ml-auto shrink-0" aria-hidden />}
       </div>
-      <p className="text-[11px] text-muted-foreground">{hint}</p>
-      <div className="flex gap-3 items-center">
-        <div className="relative w-20 h-16 rounded-lg border border-border bg-card overflow-hidden shrink-0 flex items-center justify-center">
-          {url && !isPdf ? (
-            <Image src={url} alt="" fill className="object-cover" sizes="80px" />
+      <p className="text-[11px] text-muted-foreground leading-snug">{hint}</p>
+
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+        <div className="relative w-full sm:w-24 h-20 rounded-lg border border-border bg-card overflow-hidden shrink-0 flex items-center justify-center mx-auto sm:mx-0">
+          {url && !isPdf && canPreviewImageUrl(url) ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt="" className="absolute inset-0 w-full h-full object-cover" />
           ) : url && isPdf ? (
             <FileText className="w-8 h-8 text-primary" />
+          ) : url && !isPdf ? (
+            <CheckCircle2 className="w-8 h-8 text-green-500" />
           ) : (
             <Upload className="w-6 h-6 text-muted-foreground/40" />
           )}
         </div>
-        <div className="flex-1 min-w-0">
-          <Button type="button" variant="outline" size="sm" className="rounded-lg w-full min-h-10" disabled={uploading} asChild>
-            <label className="cursor-pointer flex items-center justify-center gap-2 px-3">
-              <Upload className="w-4 h-4 shrink-0" />
-              {uploading ? "Uploading…" : url ? "Replace file" : "Choose file"}
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/heic,image/*,application/pdf"
-                className="sr-only"
-                disabled={uploading}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) onUpload(f);
-                  e.target.value = "";
-                }}
-              />
+
+        <div className="flex-1 min-w-0 space-y-2">
+          <div className="relative">
+            <label
+              htmlFor={inputId}
+              className={`flex items-center justify-center gap-2 w-full min-h-[44px] px-4 rounded-xl border border-input bg-background text-sm font-medium cursor-pointer touch-manipulation select-none transition-colors ${
+                uploading ? "opacity-60 pointer-events-none" : "hover:bg-muted/50 active:bg-muted"
+              }`}
+            >
+              <Upload className="w-4 h-4 shrink-0 text-primary" />
+              <span>{uploading ? "Uploading…" : url ? "Replace file" : "Choose photo or PDF"}</span>
             </label>
-          </Button>
+            <input
+              id={inputId}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*,application/pdf,.pdf"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              disabled={uploading}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) onUpload(f);
+                e.target.value = "";
+              }}
+            />
+          </div>
           {url && (
-            <a href={url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary hover:underline mt-1 inline-block">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] text-primary hover:underline inline-block break-all"
+            >
               View uploaded file
             </a>
           )}
@@ -129,6 +147,10 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
   const handleDocUpload = async (kind: "aadhar" | "license", file: File) => {
     try {
       setUploadingDoc(kind);
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      if (!isPdf) {
+        toast({ title: "Preparing document…", description: "Compressing photo for upload." });
+      }
       const url = await uploadBookingDocToApi(file);
       if (kind === "aadhar") setAadharUrl(url);
       else setLicenseUrl(url);
@@ -261,7 +283,7 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-md rounded-2xl max-h-[min(92vh,900px)] overflow-y-auto overscroll-contain p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Book {carLabel}</DialogTitle>
           <p className="text-sm text-muted-foreground text-left">

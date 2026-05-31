@@ -19,6 +19,8 @@ interface BookingRow {
   withDriver: boolean;
   driverPrice: number;
   status: string;
+  source?: "website" | "manual";
+  adminNotes?: string | null;
   createdAt: string;
   car?: { brand: string; model: string };
   user?: { name: string | null; email: string };
@@ -89,6 +91,11 @@ export default function AdminBookingsPage() {
                   <td className="px-6 py-4">
                     <div className="font-mono text-xs font-bold text-muted-foreground mb-1">#{booking.id}</div>
                     <div className="text-xs">{format(new Date(booking.createdAt), "MMM d, yyyy")}</div>
+                    {booking.source === "manual" && (
+                      <Badge variant="outline" className="mt-1 text-[10px] bg-amber-500/10 text-amber-700 border-amber-500/30">
+                        Offline
+                      </Badge>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <div className="font-bold text-foreground">

@@ -13,6 +13,7 @@ function formatRow(row: {
     ...formatBooking(row.booking),
     car: row.car
       ? {
+          id: row.car.id,
           brand: row.car.brand,
           model: row.car.model,
           imageUrl: row.car.imageUrl,
@@ -29,6 +30,8 @@ function formatRow(row: {
     guestEmail: row.booking.guestEmail,
     aadharUrl: row.booking.aadharUrl,
     drivingLicenseUrl: row.booking.drivingLicenseUrl,
+    source: row.booking.source,
+    adminNotes: row.booking.adminNotes,
   };
 }
 
