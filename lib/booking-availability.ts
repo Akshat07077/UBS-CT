@@ -1,8 +1,11 @@
 import { bookingsTable } from "@/lib/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 
 /** Only website bookings block dates on the public car page. */
 export const blocksPublicAvailability = sql`${bookingsTable.source} = 'website'`;
+
+/** Paid / active rentals block new website bookings. Pending checkout does not. */
+export const websiteBlockingStatuses = sql`${bookingsTable.status} IN ('confirmed', 'completed')`;
 
 export function bookingDateOverlap(pickupDate: string, returnDate: string) {
   return sql`NOT (${bookingsTable.returnDate} < ${pickupDate} OR ${bookingsTable.pickupDate} > ${returnDate})`;
@@ -19,9 +22,36 @@ export function websiteAvailabilityConflictConditions(
 ) {
   return and(
     eq(bookingsTable.carId, carId),
-    activeBookingStatuses(),
     blocksPublicAvailability,
+    websiteBlockingStatuses,
     bookingDateOverlap(pickupDate, returnDate)
+  );
+}
+
+/** Cancel abandoned pending website bookings so the same customer can retry checkout. */
+export function guestPendingReleaseConditions(
+  carId: number,
+  pickupDate: string,
+  returnDate: string,
+  opts: { userId?: number | null; guestPhone?: string | null }
+) {
+  const guestMatch =
+    opts.userId != null && opts.guestPhone?.trim()
+      ? or(eq(bookingsTable.userId, opts.userId), eq(bookingsTable.guestPhone, opts.guestPhone.trim()))
+      : opts.userId != null
+        ? eq(bookingsTable.userId, opts.userId)
+        : opts.guestPhone?.trim()
+          ? eq(bookingsTable.guestPhone, opts.guestPhone.trim())
+          : null;
+
+  if (!guestMatch) return null;
+
+  return and(
+    eq(bookingsTable.carId, carId),
+    eq(bookingsTable.status, "pending"),
+    blocksPublicAvailability,
+    bookingDateOverlap(pickupDate, returnDate),
+    guestMatch
   );
 }
 

@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { sumDailyRates, driverDailyMidpoint } from "@/lib/rental-listing";
 import { viewerOwnsCar } from "@/lib/car-response";
 import { DEFAULT_PICKUP_TIME, DEFAULT_RETURN_TIME, isValidBookingTime } from "@/lib/constants/booking-times";
-import { websiteAvailabilityConflictConditions } from "@/lib/booking-availability";
+import { websiteAvailabilityConflictConditions, guestPendingReleaseConditions } from "@/lib/booking-availability";
 import type { User } from "@/lib/db/schema";
 import { createLead } from "@/lib/leads";
 
@@ -85,6 +85,14 @@ export async function createBooking(input: {
   if (!car.available) throw new BookingError("Car is not available", 400);
   if (currentUser && viewerOwnsCar(car, currentUser)) {
     throw new BookingError("You cannot book your own listing", 400);
+  }
+
+  const releaseWhere = guestPendingReleaseConditions(carId, pickupDate, returnDate, {
+    userId: currentUser?.id,
+    guestPhone: isGuest ? guestPhone : currentUser ? guestPhone : null,
+  });
+  if (releaseWhere) {
+    await db.update(bookingsTable).set({ status: "cancelled" }).where(releaseWhere);
   }
 
   const conflicting = await db

@@ -85,7 +85,7 @@ function CarDetailPage() {
   const L = car.listing;
   const rentalTotal = pickupDate && returnDate && days > 0 ? sumDailyRates(pickupDate, returnDate, car.pricePerDay) : 0;
   const total = rentalTotal;
-  const isAvailable = availability?.available ?? true;
+  const isAvailable = isChecking ? undefined : (availability?.available ?? false);
   const now = new Date();
   const todayBand = L ? scaledDayBand(car.pricePerDay, L.pricePerDayMax, now) : null;
   const isOwnListing = car.isViewerOwner === true;
