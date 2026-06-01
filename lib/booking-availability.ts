@@ -59,3 +59,75 @@ export function guestPendingReleaseConditions(
 export function dateInBookingRange(day: string, pickupDate: string, returnDate: string) {
   return day >= pickupDate && day <= returnDate;
 }
+
+type SqlDb = { execute: (query: ReturnType<typeof sql>) => Promise<{ rows: { count: string }[] }> };
+
+/**
+ * Count overlapping website bookings using only core columns.
+ * Works even when optional columns (collateral, advance) are not migrated yet.
+ */
+export async function countWebsiteBookingConflicts(
+  db: SqlDb,
+  carId: number,
+  pickupDate: string,
+  returnDate: string
+): Promise<number> {
+  const rows = await db.execute(sql`
+    SELECT COUNT(*)::text AS count
+    FROM bookings
+    WHERE car_id = ${carId}
+      AND source = 'website'
+      AND status IN ('confirmed', 'completed')
+      AND NOT (return_date < ${pickupDate}::date OR pickup_date > ${returnDate}::date)
+  `);
+  const first = rows.rows[0];
+  return Number(first?.count ?? 0);
+}
+
+/** Cancel the current guest's abandoned pending bookings for the same car/dates. */
+export async function cancelGuestPendingOverlaps(
+  db: SqlDb,
+  carId: number,
+  pickupDate: string,
+  returnDate: string,
+  opts: { userId?: number | null; guestPhone?: string | null }
+): Promise<void> {
+  const phone = opts.guestPhone?.trim();
+  if (opts.userId == null && !phone) return;
+
+  if (opts.userId != null && phone) {
+    await db.execute(sql`
+      UPDATE bookings
+      SET status = 'cancelled'
+      WHERE car_id = ${carId}
+        AND status = 'pending'
+        AND source = 'website'
+        AND NOT (return_date < ${pickupDate}::date OR pickup_date > ${returnDate}::date)
+        AND (user_id = ${opts.userId} OR guest_phone = ${phone})
+    `);
+    return;
+  }
+
+  if (opts.userId != null) {
+    await db.execute(sql`
+      UPDATE bookings
+      SET status = 'cancelled'
+      WHERE car_id = ${carId}
+        AND status = 'pending'
+        AND source = 'website'
+        AND NOT (return_date < ${pickupDate}::date OR pickup_date > ${returnDate}::date)
+        AND user_id = ${opts.userId}
+    `);
+    return;
+  }
+
+  await db.execute(sql`
+    UPDATE bookings
+    SET status = 'cancelled'
+    WHERE car_id = ${carId}
+      AND status = 'pending'
+      AND source = 'website'
+      AND NOT (return_date < ${pickupDate}::date OR pickup_date > ${returnDate}::date)
+      AND guest_phone = ${phone!}
+  `);
+}

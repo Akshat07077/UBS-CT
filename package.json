@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "db:push": "drizzle-kit push",
+    "db:patch": "tsx scripts/db-patch-schema.ts",
     "db:seed": "tsx lib/db/seed.ts",
     "db:check-cars": "tsx scripts/check-cars.ts",
     "db:create-admin": "tsx scripts/create-admin.ts",

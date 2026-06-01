@@ -166,7 +166,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pageTitle = currentPageLabel(pathname);
 
   return (
-    <div className="min-h-screen w-full bg-black text-foreground overflow-x-hidden">
+    <div className="min-h-screen w-full max-w-[100vw] bg-black text-foreground">
       {/* Mobile top bar */}
       <header className="lg:hidden sticky top-0 z-30 flex items-center gap-3 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-md px-4 h-14 safe-area-inset-top">
         <Button
@@ -230,8 +230,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         />
       </aside>
 
-      <main className="w-full min-w-0 lg:ml-64 overflow-x-hidden">
-        <div className="p-4 sm:p-6 lg:p-8 w-full min-w-0 max-w-full box-border">{children}</div>
+      <main className="w-full min-w-0 lg:ml-64">
+        <div className="p-4 sm:p-6 lg:p-8 w-full min-w-0 max-w-full box-border overflow-x-auto overflow-y-visible">
+          {children}
+        </div>
       </main>
     </div>
   );

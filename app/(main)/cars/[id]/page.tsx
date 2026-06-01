@@ -31,12 +31,22 @@ import {
   formatTime12h,
 } from "@/lib/constants/booking-times";
 
+/** Local calendar date YYYY-MM-DD (avoids UTC off-by-one in India). */
+function localYmd(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function defaultPickupYmd() {
-  return new Date().toISOString().split("T")[0];
+  return localYmd();
 }
 
 function defaultReturnYmd() {
-  return new Date(Date.now() + 86400000).toISOString().split("T")[0];
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return localYmd(d);
 }
 
 const INCLUSIONS = [
@@ -87,10 +97,16 @@ function CarDetailPage() {
     if (rt) setReturnTime(rt);
   }, [searchParams]);
 
-  const { data: availability, isLoading: isChecking } = useQuery<{ available: boolean }>({
+  const {
+    data: availability,
+    isLoading: isChecking,
+    isError: availabilityError,
+    refetch: refetchAvailability,
+  } = useQuery<{ available: boolean }>({
     queryKey: ["availability", id, pickupDate, returnDate],
     queryFn: () => apiFetch<{ available: boolean }>(`/api/cars/${id}/availability?pickup_date=${pickupDate}&return_date=${returnDate}`),
     enabled: !!pickupDate && !!returnDate,
+    retry: 1,
   });
 
   if (isLoading) return (
@@ -107,8 +123,9 @@ function CarDetailPage() {
     </div>
   );
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = localYmd();
   const days = pickupDate && returnDate ? differenceInDays(new Date(returnDate), new Date(pickupDate)) : 0;
+  const invalidDates = !!pickupDate && !!returnDate && days <= 0;
   const L = car.listing;
   const rentalTotal = pickupDate && returnDate && days > 0 ? sumDailyRates(pickupDate, returnDate, car.pricePerDay) : 0;
   const driverTotal = 0;
@@ -117,7 +134,8 @@ function CarDetailPage() {
     pickupDate && returnDate && days > 0
       ? computeBookingPaymentQuote(paymentSettings, car.listing, rentalTotal, driverTotal)
       : null;
-  const isAvailable = isChecking ? undefined : (availability?.available ?? false);
+  const isAvailable =
+    availabilityError || invalidDates ? undefined : isChecking ? undefined : availability?.available === true;
   const now = new Date();
   const todayBand = L ? scaledDayBand(car.pricePerDay, L.pricePerDayMax, now) : null;
   const isOwnListing = car.isViewerOwner === true;
@@ -327,8 +345,19 @@ function CarDetailPage() {
                         <span className="font-bold text-xl text-primary">{formatINR(total)}</span>
                       </div>
                     )}
-                    {isChecking ? (
+                    {invalidDates ? (
+                      <p className="text-xs text-amber-600 mt-3 flex items-center justify-center gap-1.5 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5" /> Return date must be after pickup
+                      </p>
+                    ) : isChecking ? (
                       <p className="text-xs text-muted-foreground mt-3 text-center">Checking availability...</p>
+                    ) : availabilityError ? (
+                      <p className="text-xs text-amber-600 mt-3 text-center">
+                        Could not check availability.{" "}
+                        <button type="button" className="underline font-medium" onClick={() => refetchAvailability()}>
+                          Retry
+                        </button>
+                      </p>
                     ) : isAvailable ? (
                       <p className="text-xs text-green-600 mt-3 flex items-center justify-center gap-1.5 font-medium"><CheckCircle2 className="w-3.5 h-3.5" /> Available for these dates</p>
                     ) : (
@@ -346,7 +375,14 @@ function CarDetailPage() {
                   size="lg"
                   className="w-full h-14 rounded-xl text-base font-bold shadow-lg shadow-primary/20"
                   onClick={handleBookNow}
-                  disabled={!car.available || isOwnListing || isChecking || (!!pickupDate && !!returnDate && !isAvailable)}
+                  disabled={
+                    !car.available ||
+                    isOwnListing ||
+                    isChecking ||
+                    invalidDates ||
+                    availabilityError ||
+                    (!!pickupDate && !!returnDate && isAvailable === false)
+                  }
                 >
                   {!car.available ? "Unavailable" : isOwnListing ? "Your listing" : "Book Now"}
                 </Button>

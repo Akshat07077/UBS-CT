@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { sumDailyRates, driverDailyMidpoint } from "@/lib/rental-listing";
 import { viewerOwnsCar } from "@/lib/car-response";
 import { DEFAULT_PICKUP_TIME, DEFAULT_RETURN_TIME, isValidBookingTime } from "@/lib/constants/booking-times";
-import { websiteAvailabilityConflictConditions, guestPendingReleaseConditions } from "@/lib/booking-availability";
+import { cancelGuestPendingOverlaps, countWebsiteBookingConflicts } from "@/lib/booking-availability";
 import type { User } from "@/lib/db/schema";
 import { createLead } from "@/lib/leads";
 import {
@@ -104,19 +104,13 @@ export async function createBooking(input: {
     throw new BookingError("You cannot book your own listing", 400);
   }
 
-  const releaseWhere = guestPendingReleaseConditions(carId, pickupDate, returnDate, {
+  await cancelGuestPendingOverlaps(db, carId, pickupDate, returnDate, {
     userId: currentUser?.id,
     guestPhone: isGuest ? guestPhone : currentUser ? guestPhone : null,
   });
-  if (releaseWhere) {
-    await db.update(bookingsTable).set({ status: "cancelled" }).where(releaseWhere);
-  }
 
-  const conflicting = await db
-    .select()
-    .from(bookingsTable)
-    .where(websiteAvailabilityConflictConditions(carId, pickupDate, returnDate));
-  if (conflicting.length > 0) {
+  const conflictCount = await countWebsiteBookingConflicts(db, carId, pickupDate, returnDate);
+  if (conflictCount > 0) {
     throw new BookingError("Car is already booked for the selected dates", 400);
   }
 

@@ -99,15 +99,15 @@ export default function AdminOverviewPage() {
   ];
 
   return (
-    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500 min-w-0 max-w-full">
+    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500 w-full min-w-[min(100%,320px)]">
       {/* Header */}
       <div className="bg-card p-4 sm:p-6 rounded-2xl border border-border shadow-sm min-w-0">
         <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight">Overview</h1>
         <p className="text-muted-foreground mt-1 text-sm sm:text-base">Welcome back. Here&apos;s what&apos;s happening at {brand.name}.</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 min-[1280px]:grid-cols-4 gap-3 sm:gap-4 min-w-0">
+      {/* Stats — auto-fit to content width (sidebar shrinks main area) */}
+      <div className="grid gap-3 sm:gap-4 w-full [grid-template-columns:repeat(auto-fit,minmax(min(100%,13.5rem),1fr))]">
         {bLoading || cLoading || uLoading ? (
           Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-2xl" />)
         ) : (
@@ -121,7 +121,7 @@ export default function AdminOverviewPage() {
       </div>
 
       {/* Booking status breakdown */}
-      <div className="grid grid-cols-2 min-[1280px]:grid-cols-4 gap-3 sm:gap-4 min-w-0">
+      <div className="grid gap-3 sm:gap-4 w-full [grid-template-columns:repeat(auto-fit,minmax(min(100%,9.5rem),1fr))]">
         {bookingsByStatus.map(({ label, count, icon: Icon, color }) => (
           <div key={label} className="bg-card border border-border rounded-2xl p-3 sm:p-4 flex items-center gap-2 sm:gap-3 min-w-0 overflow-hidden">
             <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
@@ -135,9 +135,9 @@ export default function AdminOverviewPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 min-[1280px]:grid-cols-2 min-[1536px]:grid-cols-3 gap-4 sm:gap-6 min-w-0">
+      <div className="flex flex-col gap-4 sm:gap-6 w-full">
         {/* Contact messages */}
-        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm w-full min-w-0">
           <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <MessageSquare className="w-5 h-5 text-primary shrink-0" />
@@ -184,7 +184,7 @@ export default function AdminOverviewPage() {
         </div>
 
         {/* Recent bookings */}
-        <div className="min-[1280px]:col-span-2 min-[1536px]:col-span-1 min-[1536px]:order-2 bg-card border border-border rounded-2xl overflow-hidden shadow-sm min-w-0">
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm w-full min-w-0">
           <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border">
             <h2 className="font-display font-bold text-base sm:text-lg">Recent Bookings</h2>
             <Link href="/admin/bookings" className="text-sm text-primary hover:underline font-medium shrink-0">
@@ -220,7 +220,7 @@ export default function AdminOverviewPage() {
         </div>
 
         {/* Fleet availability */}
-        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm min-w-0 min-[1536px]:order-3">
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm w-full min-w-0">
           <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border gap-2">
             <h2 className="font-display font-bold text-base sm:text-lg truncate">Fleet Status</h2>
             <Link href="/admin/cars" className="text-sm text-primary hover:underline font-medium">Manage</Link>

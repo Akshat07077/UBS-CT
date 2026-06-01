@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, bookingsTable, carsTable } from "@/lib/db";
+import { db, carsTable } from "@/lib/db";
 import { eq } from "drizzle-orm";
-import { websiteAvailabilityConflictConditions } from "@/lib/booking-availability";
+import { countWebsiteBookingConflicts } from "@/lib/booking-availability";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -21,12 +21,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "pickup_date and return_date required" }, { status: 400 });
     }
 
-    const conflicting = await db
-      .select()
-      .from(bookingsTable)
-      .where(websiteAvailabilityConflictConditions(carId, pickup_date, return_date));
+    const conflictCount = await countWebsiteBookingConflicts(db, carId, pickup_date, return_date);
 
-    return NextResponse.json({ available: conflicting.length === 0, conflictingBookings: conflicting.length });
+    return NextResponse.json({
+      available: conflictCount === 0,
+      conflictingBookings: conflictCount,
+    });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
