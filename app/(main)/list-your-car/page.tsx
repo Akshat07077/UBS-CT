@@ -12,7 +12,14 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { brand } from "@/lib/brand/config";
 import { INDIA_CITY_OPTIONS, OTHER_CITY_OPTION, PAN_INDIA_CITY } from "@/lib/constants/india-cities";
-import { Car as CarIcon, CheckCircle2, Upload, Plus, X } from "lucide-react";
+import { Car as CarIcon, Bike, CheckCircle2, Upload, Plus, X } from "lucide-react";
+import {
+  VEHICLE_TYPES,
+  VEHICLE_TYPE_LABELS,
+  defaultSeatsForVehicleType,
+  seatsLabelForVehicleType,
+  type VehicleType,
+} from "@/lib/constants/vehicle-types";
 import { canPreviewImageUrl, uploadImageToApi } from "@/lib/upload-client";
 
 type SubmitResponse = {
@@ -30,6 +37,8 @@ export default function ListYourCarPage() {
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const [selectedCity, setSelectedCity] = useState(PAN_INDIA_CITY);
   const [customCity, setCustomCity] = useState("");
+  const [vehicleType, setVehicleType] = useState<VehicleType>("car");
+  const [seats, setSeats] = useState(defaultSeatsForVehicleType("car"));
   const [cloudinaryReady, setCloudinaryReady] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -82,6 +91,7 @@ export default function ListYourCarPage() {
     const urls = gallery.map((u) => u.trim()).filter(Boolean);
     const finalImage = urls[0] ?? null;
     const payload = {
+      vehicleType,
       ownerName: String(fd.get("ownerName") || "").trim(),
       ownerEmail: String(fd.get("ownerEmail") || "").trim(),
       ownerPhone: String(fd.get("ownerPhone") || "").trim(),
@@ -91,7 +101,7 @@ export default function ListYourCarPage() {
       pricePerDay: parseFloat(String(fd.get("pricePerDay"))),
       transmission: fd.get("transmission"),
       fuelType: fd.get("fuelType"),
-      seats: parseInt(String(fd.get("seats")), 10),
+      seats,
       location: resolvedCity,
       description: String(fd.get("description") || "").trim() || null,
       imageUrl: finalImage,
@@ -142,9 +152,9 @@ export default function ListYourCarPage() {
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 md:py-14">
       <div className="mb-10">
         <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-2">List with {brand.name}</p>
-        <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight mb-3">List your car</h1>
+        <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight mb-3">List your vehicle</h1>
         <p className="text-muted-foreground text-lg leading-relaxed">
-          Tell us who you are, then your vehicle details. You do <strong className="text-foreground font-semibold">not</strong> need an account. Submissions stay hidden until an admin approves them.
+          List a car, bike, or scooty for rent. You do <strong className="text-foreground font-semibold">not</strong> need an account. Submissions stay hidden until an admin approves them.
         </p>
       </div>
 
@@ -256,14 +266,55 @@ export default function ListYourCarPage() {
             </div>
           </div>
 
+          <div className="space-y-3 mb-6">
+            <Label className="text-base">Vehicle type</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {VEHICLE_TYPES.map((type) => (
+                <label
+                  key={type}
+                  className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-3 cursor-pointer text-sm font-semibold transition-colors ${
+                    vehicleType === type
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-card hover:border-primary/30"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="vehicleTypeUi"
+                    className="sr-only"
+                    checked={vehicleType === type}
+                    onChange={() => {
+                      setVehicleType(type);
+                      setSeats(defaultSeatsForVehicleType(type));
+                    }}
+                  />
+                  {type === "car" ? <CarIcon className="w-4 h-4" /> : <Bike className="w-4 h-4" />}
+                  {VEHICLE_TYPE_LABELS[type]}
+                </label>
+              ))}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="brand">Brand</Label>
-              <Input id="brand" name="brand" required className="rounded-xl" placeholder="Maruti" />
+              <Input
+                id="brand"
+                name="brand"
+                required
+                className="rounded-xl"
+                placeholder={vehicleType === "car" ? "Maruti" : "Honda"}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="model">Model</Label>
-              <Input id="model" name="model" required className="rounded-xl" placeholder="Swift" />
+              <Input
+                id="model"
+                name="model"
+                required
+                className="rounded-xl"
+                placeholder={vehicleType === "car" ? "Swift" : vehicleType === "scooty" ? "Activa" : "Classic 350"}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="year">Year</Label>
@@ -293,8 +344,18 @@ export default function ListYourCarPage() {
               </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="seats">Seats</Label>
-              <Input id="seats" name="seats" type="number" min={2} max={12} defaultValue={5} required className="rounded-xl" />
+              <Label htmlFor="seats">{seatsLabelForVehicleType(vehicleType)}</Label>
+              <Input
+                id="seats"
+                name="seats"
+                type="number"
+                min={vehicleType === "car" ? 2 : 1}
+                max={vehicleType === "car" ? 12 : 2}
+                value={seats}
+                onChange={(e) => setSeats(parseInt(e.target.value, 10) || defaultSeatsForVehicleType(vehicleType))}
+                required
+                className="rounded-xl"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="location">City</Label>

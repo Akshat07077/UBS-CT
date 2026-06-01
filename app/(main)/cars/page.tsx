@@ -10,13 +10,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api";
 import { brand } from "@/lib/brand/config";
 import { SERVICE_CITY } from "@/lib/constants/locations";
-import { Search, FilterX, Car as CarIcon, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, FilterX, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react";
+
+import { VEHICLE_TYPE_PLURAL, type VehicleType } from "@/lib/constants/vehicle-types";
+import { Car as CarIcon, Bike } from "lucide-react";
 
 interface Filters {
   location?: string;
   transmission?: string;
   fuel_type?: string;
   max_price?: number;
+  vehicleType?: VehicleType | "all";
   /** all = no param; platform = fleet only; peer = host-listed only */
   listingScope?: "all" | "platform" | "peer";
 }
@@ -134,13 +138,16 @@ function CarsContent() {
     Object.entries(filters)
       .filter(([k, v]) => {
         if (v === undefined || v === "") return false;
-        if (k === "listingScope") return false;
+        if (k === "listingScope" || k === "vehicleType") return false;
         return true;
       })
       .map(([k, v]) => [k, String(v)])
   );
   if (filters.listingScope === "platform") queryString.set("platform_only", "true");
   if (filters.listingScope === "peer") queryString.set("peer_only", "true");
+  if (filters.vehicleType && filters.vehicleType !== "all") {
+    queryString.set("vehicle_type", filters.vehicleType);
+  }
   const qs = queryString.toString();
 
   // Fetch all cars (no filters) to get per-city counts
@@ -182,8 +189,16 @@ function CarsContent() {
   const activeCount = Object.entries(filters).filter(([k, v]) => {
     if (v === undefined || v === "") return false;
     if (k === "listingScope" && v === "all") return false;
+    if (k === "vehicleType" && v === "all") return false;
     return true;
   }).length;
+
+  const vehicleTabs: { value: VehicleType | "all"; label: string; icon: typeof CarIcon }[] = [
+    { value: "all", label: "All", icon: CarIcon },
+    { value: "car", label: VEHICLE_TYPE_PLURAL.car, icon: CarIcon },
+    { value: "bike", label: VEHICLE_TYPE_PLURAL.bike, icon: Bike },
+    { value: "scooty", label: VEHICLE_TYPE_PLURAL.scooty, icon: Bike },
+  ];
 
   const secondaryFilterCount = activeCount - (filters.location ? 1 : 0);
 
@@ -193,11 +208,38 @@ function CarsContent() {
       {/* City tabs */}
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-display font-bold tracking-tight mb-1">Browse Fleet</h1>
-        <p className="text-muted-foreground text-sm mb-5">
+        <p className="text-muted-foreground text-sm mb-4">
           {filters.location
-            ? `Showing cars in ${filters.location}`
-            : `All vehicles · ${SERVICE_CITY}`}
+            ? `Showing in ${filters.location}`
+            : `Cars, bikes & scooties · ${SERVICE_CITY}`}
         </p>
+        <div className="flex flex-wrap gap-2 mb-5">
+          {vehicleTabs.map(({ value, label, icon: Icon }) => {
+            const active = (filters.vehicleType ?? "all") === value;
+            const count =
+              value === "all"
+                ? allCars?.length ?? 0
+                : allCars?.filter((c) => (c.vehicleType ?? "car") === value).length ?? 0;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => handleChange("vehicleType", value === "all" ? undefined : value)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all ${
+                  active
+                    ? "bg-primary text-primary-foreground border-primary shadow-md shadow-primary/20"
+                    : "border-border bg-card hover:border-primary/40 hover:text-primary"
+                }`}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                {label}
+                <span className={`text-xs rounded-full px-1.5 py-0.5 font-bold ${active ? "bg-white/20" : "bg-muted"}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
         {dynamicCities.length > 0 ? (
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             {dynamicCities.map((city) => {

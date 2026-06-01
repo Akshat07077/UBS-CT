@@ -61,11 +61,32 @@
     @apply bg-background text-foreground antialiased;
   }
 
-  /* Native picker: dark popup + hide default icon (white Lucide overlay on Input) */
+  /* Native picker: dark popup + visible date/time text on mobile */
   input[type="date"],
   input[type="time"],
   input[type="datetime-local"] {
     color-scheme: dark;
+    color: hsl(var(--foreground));
+  }
+
+  input[type="date"]::-webkit-datetime-edit,
+  input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+  input[type="date"]::-webkit-datetime-edit-text,
+  input[type="date"]::-webkit-datetime-edit-month-field,
+  input[type="date"]::-webkit-datetime-edit-day-field,
+  input[type="date"]::-webkit-datetime-edit-year-field,
+  input[type="time"]::-webkit-datetime-edit,
+  input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+  input[type="time"]::-webkit-datetime-edit-text,
+  input[type="time"]::-webkit-datetime-edit-hour-field,
+  input[type="time"]::-webkit-datetime-edit-minute-field,
+  input[type="time"]::-webkit-datetime-edit-ampm-field {
+    color: hsl(var(--foreground));
+  }
+
+  input[type="date"]:not(:valid)::-webkit-datetime-edit,
+  input[type="time"]:not(:valid)::-webkit-datetime-edit {
+    color: hsl(var(--muted-foreground));
   }
 }
 
@@ -77,7 +98,7 @@
 
   .datetime-field input[type="date"],
   .datetime-field input[type="time"] {
-    @apply w-full pr-10 appearance-none;
+    @apply w-full pr-10 appearance-none text-foreground;
     color-scheme: dark;
   }
 

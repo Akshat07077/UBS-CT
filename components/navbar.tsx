@@ -54,7 +54,7 @@ export function Navbar() {
               Browse Cars
             </Link>
             <Link href="/list-your-car" className={linkClass(pathname === "/list-your-car")}>
-              List your car
+              List your vehicle
             </Link>
             <Link href="/contact" className={linkClass(pathname === "/contact")}>
               Contact
@@ -80,7 +80,7 @@ export function Navbar() {
                   <DropdownMenuSeparator className="bg-zinc-800" />
                   <DropdownMenuItem asChild>
                     <Link href="/list-your-car" className="cursor-pointer flex items-center py-2 focus:bg-zinc-900">
-                      <CirclePlus className="mr-2 h-4 w-4" /> List your car
+                      <CirclePlus className="mr-2 h-4 w-4" /> List your vehicle
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
@@ -159,7 +159,7 @@ export function Navbar() {
                     : "hover:bg-zinc-900"
                 }`}
               >
-                <CirclePlus className="w-4 h-4" /> List your car
+                <CirclePlus className="w-4 h-4" /> List your vehicle
               </div>
             </Link>
             <Link href="/contact" onClick={() => setMobileOpen(false)}>

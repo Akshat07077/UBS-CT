@@ -18,6 +18,7 @@ import { formatINR, type CarData } from "@/components/car-card";
 import { buildBookingWhatsAppUrl } from "@/lib/whatsapp";
 import { formatBookingDateTime } from "@/lib/constants/booking-times";
 import { sumDailyRates, driverDailyMidpoint } from "@/lib/rental-listing";
+import { isTwoWheeler } from "@/lib/constants/vehicle-types";
 import { differenceInDays } from "date-fns";
 import { CreditCard, MessageCircle, UserCheck, CheckCircle2, Upload, IdCard, FileText, FlaskConical } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -139,7 +140,7 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
 
   const days = differenceInDays(new Date(returnDate), new Date(pickupDate));
   const driverPerDay = driverDailyMidpoint(car.listing);
-  const showChauffeur = driverPerDay > 0;
+  const showChauffeur = driverPerDay > 0 && !isTwoWheeler(car.vehicleType);
   const carTotal = sumDailyRates(pickupDate, returnDate, car.pricePerDay);
   const driverTotal = withDriver && showChauffeur ? days * driverPerDay : 0;
   const grandTotal = carTotal + driverTotal;

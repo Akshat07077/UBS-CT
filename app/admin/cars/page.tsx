@@ -183,7 +183,12 @@ export default function AdminCarsPage() {
                       </div>
                       <div className="min-w-0">
                         <div className="font-semibold text-foreground text-sm truncate">{car.brand} {car.model}</div>
-                        <div className="text-[11px] text-muted-foreground truncate">{car.year} · {car.location}</div>
+                        <div className="text-[11px] text-muted-foreground truncate">
+                          {car.year} · {car.location}
+                          {car.vehicleType && car.vehicleType !== "car" && (
+                            <span className="ml-1 capitalize">· {car.vehicleType}</span>
+                          )}
+                        </div>
                         {car.ownerEmail && (
                           <div className="text-[10px] text-muted-foreground mt-0.5 max-w-[12rem] truncate" title={car.ownerEmail}>
                             {car.ownerName ?? "Owner"} · {car.ownerEmail}
@@ -335,7 +340,11 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
       setIsSubmitting(false);
       return;
     }
+    const vt = fd.get("vehicleType");
+    const vehicleType =
+      vt === "bike" || vt === "scooty" || vt === "car" ? vt : car?.vehicleType ?? "car";
     const data = {
+      vehicleType,
       brand: fd.get("brand"),
       model: fd.get("model"),
       year: parseInt(fd.get("year") as string),
@@ -466,6 +475,19 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Vehicle type</Label>
+        <select
+          name="vehicleType"
+          defaultValue={car?.vehicleType ?? "car"}
+          className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+        >
+          <option value="car">Car</option>
+          <option value="bike">Bike</option>
+          <option value="scooty">Scooty</option>
+        </select>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

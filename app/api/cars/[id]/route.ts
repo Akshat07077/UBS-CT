@@ -40,7 +40,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
-const HOST_FIELDS = ["brand", "model", "year", "pricePerDay", "transmission", "fuelType", "seats", "location", "description", "imageUrl", "available"] as const;
+const HOST_FIELDS = ["vehicleType", "brand", "model", "year", "pricePerDay", "transmission", "fuelType", "seats", "location", "description", "imageUrl", "available"] as const;
 const ADMIN_FIELDS = [...HOST_FIELDS, "listing"] as const;
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

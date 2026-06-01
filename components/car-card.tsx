@@ -3,7 +3,8 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Users, Fuel, Settings2, MapPin, Sparkles } from "lucide-react";
+import { Users, Fuel, Settings2, MapPin, Sparkles, Bike } from "lucide-react";
+import { VEHICLE_TYPE_LABELS, isTwoWheeler, seatsLabelForVehicleType, type VehicleType } from "@/lib/constants/vehicle-types";
 import type { CarListingJson } from "@/lib/rental-listing";
 import { pricingContextLabel, scaledDayBand } from "@/lib/rental-listing";
 
@@ -13,6 +14,7 @@ const defaultImage = "https://images.unsplash.com/photo-1503376760302-8fac2a800d
 
 export interface CarData {
   id: number;
+  vehicleType?: VehicleType;
   brand: string;
   model: string;
   year: number;
@@ -81,6 +83,11 @@ export function CarCard({ car }: { car: CarData }) {
               Community host
             </Badge>
           )}
+          {car.vehicleType && car.vehicleType !== "car" && (
+            <Badge variant="outline" className="bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/30 text-[10px] px-2 py-0.5 flex items-center gap-1">
+              <Bike className="w-3 h-3" /> {VEHICLE_TYPE_LABELS[car.vehicleType]}
+            </Badge>
+          )}
         </div>
         {!car.available && (
           <div className="absolute inset-0 bg-background/60 flex items-center justify-center backdrop-blur-[2px] z-20">
@@ -126,7 +133,7 @@ export function CarCard({ car }: { car: CarData }) {
           </p>
         )}
 
-        {L && L.chauffeurPerKmMin != null && L.chauffeurPerKmMax != null && (
+        {L && !isTwoWheeler(car.vehicleType) && L.chauffeurPerKmMin != null && L.chauffeurPerKmMax != null && (
           <p className="text-[11px] text-muted-foreground mb-3">
             Chauffeur add-on: {formatINR(L.chauffeurPerKmMin)} – {formatINR(L.chauffeurPerKmMax)} / km
           </p>
@@ -142,8 +149,14 @@ export function CarCard({ car }: { car: CarData }) {
             <span className="text-xs font-medium capitalize">{car.fuelType}</span>
           </div>
           <div className="flex flex-col items-center text-center p-2 rounded-lg bg-muted/50">
-            <Users className="w-4 h-4 text-muted-foreground mb-1" />
-            <span className="text-xs font-medium">{car.seats} Seats</span>
+            {isTwoWheeler(car.vehicleType) ? (
+              <Bike className="w-4 h-4 text-muted-foreground mb-1" />
+            ) : (
+              <Users className="w-4 h-4 text-muted-foreground mb-1" />
+            )}
+            <span className="text-xs font-medium">
+              {car.seats} {seatsLabelForVehicleType(car.vehicleType)}
+            </span>
           </div>
         </div>
 

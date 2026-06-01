@@ -8,7 +8,9 @@ import { formatAdminCar } from "@/lib/car-response";
 import { getGalleryUrlsByCarIds, replaceCarGallery } from "@/lib/db/car-images";
 import { createLead } from "@/lib/leads";
 
-const createSchema = z.object({
+const createSchema = z
+  .object({
+  vehicleType: z.enum(["car", "bike", "scooty"]).default("car"),
   ownerName: z.string().trim().min(1).max(120),
   ownerEmail: z.string().trim().email().max(254),
   ownerPhone: z.string().trim().min(8).max(24),
@@ -18,7 +20,7 @@ const createSchema = z.object({
   pricePerDay: z.coerce.number().positive().max(500_000),
   transmission: z.enum(["manual", "automatic"]),
   fuelType: z.enum(["petrol", "diesel", "electric", "hybrid"]),
-  seats: z.coerce.number().int().min(2).max(12),
+  seats: z.coerce.number().int().min(1).max(12),
   location: z.string().trim().min(1).max(120),
   description: z.string().trim().max(2000).optional().nullable(),
   imageUrl: z
@@ -26,7 +28,11 @@ const createSchema = z.object({
     .optional()
     .transform((v) => (v === "" || v === undefined ? null : v)),
   images: z.array(z.string().trim().url().max(2000)).max(12).optional().default([]),
-});
+})
+  .refine((d) => (d.vehicleType === "car" ? d.seats >= 2 : d.seats >= 1), {
+    message: "Cars need at least 2 seats; bikes/scooties need at least 1 rider",
+    path: ["seats"],
+  });
 
 /** GET ?mine=1 — signed-in user: cars they host or submitted as guest (email match). POST — public guest listing request (pending admin approval). */
 export async function GET(req: NextRequest) {
@@ -67,6 +73,7 @@ export async function POST(req: NextRequest) {
     }
 
     const {
+      vehicleType,
       ownerName,
       ownerEmail,
       ownerPhone,
@@ -99,6 +106,7 @@ export async function POST(req: NextRequest) {
     const [car] = await db
       .insert(carsTable)
       .values({
+        vehicleType,
         brand,
         model,
         year,
@@ -132,6 +140,7 @@ export async function POST(req: NextRequest) {
       message: description || null,
       relatedId: car.id,
       metadata: {
+        vehicleType,
         year,
         pricePerDay,
         transmission,

@@ -12,7 +12,8 @@ import { brand } from "@/lib/brand/config";
 import { formatPhonesDisplay } from "@/lib/utils/phone";
 import { toast } from "@/hooks/use-toast";
 import { differenceInDays } from "date-fns";
-import { Users, Fuel, Settings2, MapPin, CheckCircle2, AlertCircle, Shield, Zap, Star, Phone, Building2, CalendarRange } from "lucide-react";
+import { Users, Fuel, Settings2, MapPin, CheckCircle2, AlertCircle, Shield, Zap, Star, Phone, Building2, CalendarRange, Bike } from "lucide-react";
+import { VEHICLE_TYPE_LABELS, isTwoWheeler, seatsLabelForVehicleType } from "@/lib/constants/vehicle-types";
 import { formatINR, type CarData } from "@/components/car-card";
 import { sumDailyRates, pricingContextLabel, scaledDayBand } from "@/lib/rental-listing";
 import { BookingDialog } from "@/components/booking-dialog";
@@ -21,8 +22,17 @@ import {
   DEFAULT_PICKUP_TIME,
   DEFAULT_RETURN_TIME,
   formatBookingDateTime,
+  formatDateDdMmYyyy,
   formatTime12h,
 } from "@/lib/constants/booking-times";
+
+function defaultPickupYmd() {
+  return new Date().toISOString().split("T")[0];
+}
+
+function defaultReturnYmd() {
+  return new Date(Date.now() + 86400000).toISOString().split("T")[0];
+}
 
 const INCLUSIONS = [
   "Comprehensive insurance included",
@@ -41,8 +51,12 @@ function CarDetailPage() {
     queryFn: () => apiFetch<CarData>(`/api/cars/${id}`),
   });
 
-  const [pickupDate, setPickupDate] = useState(searchParams.get("pickup") ?? "");
-  const [returnDate, setReturnDate] = useState(searchParams.get("return") ?? "");
+  const [pickupDate, setPickupDate] = useState(
+    () => searchParams.get("pickup") || defaultPickupYmd()
+  );
+  const [returnDate, setReturnDate] = useState(
+    () => searchParams.get("return") || defaultReturnYmd()
+  );
   const [pickupTime, setPickupTime] = useState(searchParams.get("pickupTime") ?? DEFAULT_PICKUP_TIME);
   const [returnTime, setReturnTime] = useState(searchParams.get("returnTime") ?? DEFAULT_RETURN_TIME);
   const [bookingOpen, setBookingOpen] = useState(false);
@@ -130,6 +144,11 @@ function CarDetailPage() {
             <div className="bg-card p-5 md:p-8 rounded-2xl md:rounded-3xl shadow-xl border border-border/50">
               <div className="flex flex-wrap items-center gap-3 mb-4">
                 <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-none px-3 py-1">{car.year}</Badge>
+                {car.vehicleType && car.vehicleType !== "car" && (
+                  <Badge variant="outline" className="capitalize border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300">
+                    {VEHICLE_TYPE_LABELS[car.vehicleType]}
+                  </Badge>
+                )}
                 <Badge variant="outline" className="capitalize border-border/50">{car.fuelType}</Badge>
                 {!car.available && <Badge variant="destructive">Currently Unavailable</Badge>}
                 {car.listingApprovalStatus === "pending" && (
@@ -155,7 +174,11 @@ function CarDetailPage() {
                 {[
                   { icon: Settings2, label: "Gearbox", value: car.transmission },
                   { icon: Fuel, label: "Fuel", value: car.fuelType },
-                  { icon: Users, label: "Seats", value: `${car.seats}` },
+                  {
+                    icon: isTwoWheeler(car.vehicleType) ? Bike : Users,
+                    label: seatsLabelForVehicleType(car.vehicleType),
+                    value: `${car.seats}`,
+                  },
                 ].map(({ icon: Icon, label, value }) => (
                   <div key={label} className="flex flex-col gap-1.5 sm:gap-2 bg-muted/40 rounded-xl p-3 sm:p-4 min-w-0 overflow-hidden">
                     <span className="text-muted-foreground text-[10px] sm:text-xs font-semibold leading-tight truncate">
@@ -208,7 +231,20 @@ function CarDetailPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Pickup Date</Label>
-                    <Input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} min={today} className="h-12 rounded-xl" />
+                    <Input
+                      type="date"
+                      value={pickupDate}
+                      onChange={(e) => setPickupDate(e.target.value)}
+                      min={today}
+                      className="h-12 rounded-xl text-foreground"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      {pickupDate ? (
+                        <>Selected: <span className="text-foreground font-medium">{formatDateDdMmYyyy(pickupDate)}</span></>
+                      ) : (
+                        "Tap to choose pickup date"
+                      )}
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Pickup Time</Label>
@@ -223,7 +259,20 @@ function CarDetailPage() {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Return Date</Label>
-                    <Input type="date" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} min={pickupDate || today} className="h-12 rounded-xl" />
+                    <Input
+                      type="date"
+                      value={returnDate}
+                      onChange={(e) => setReturnDate(e.target.value)}
+                      min={pickupDate || today}
+                      className="h-12 rounded-xl text-foreground"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      {returnDate ? (
+                        <>Selected: <span className="text-foreground font-medium">{formatDateDdMmYyyy(returnDate)}</span></>
+                      ) : (
+                        "Tap to choose return date"
+                      )}
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Return Time</Label>

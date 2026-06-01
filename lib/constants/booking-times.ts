@@ -20,6 +20,13 @@ export function formatTime12h(time24: string): string {
   return `${h12}:${m} ${period}`;
 }
 
+/** "2026-06-01" → "01/06/2026" for compact mobile display */
+export function formatDateDdMmYyyy(dateYmd: string): string {
+  const [y, mo, d] = dateYmd.split("-").map(Number);
+  if (!y || !mo || !d) return "";
+  return `${String(d).padStart(2, "0")}/${String(mo).padStart(2, "0")}/${y}`;
+}
+
 export function formatBookingDateTime(dateYmd: string, time24: string): string {
   const [y, mo, d] = dateYmd.split("-").map(Number);
   if (!y || !mo || !d) return `${dateYmd} ${formatTime12h(time24)}`;

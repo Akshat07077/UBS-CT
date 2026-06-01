@@ -17,6 +17,7 @@ import type { CarListingJson } from "@/lib/rental-listing";
 export const userRoleEnum = pgEnum("user_role", ["user", "admin"]);
 export const transmissionEnum = pgEnum("transmission", ["manual", "automatic"]);
 export const fuelTypeEnum = pgEnum("fuel_type", ["petrol", "diesel", "electric", "hybrid"]);
+export const vehicleTypeEnum = pgEnum("vehicle_type", ["car", "bike", "scooty"]);
 export const bookingStatusEnum = pgEnum("booking_status", ["pending", "confirmed", "cancelled", "completed"]);
 /** website = blocks public availability; manual = admin-only calendar entry (offline booking). */
 export const bookingSourceEnum = pgEnum("booking_source", ["website", "manual"]);
@@ -46,6 +47,7 @@ export const carsTable = pgTable(
   "cars",
   {
     id: serial("id").primaryKey(),
+    vehicleType: vehicleTypeEnum("vehicle_type").notNull().default("car"),
     brand: text("brand").notNull(),
     model: text("model").notNull(),
     year: integer("year").notNull(),
@@ -69,6 +71,7 @@ export const carsTable = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => ({
+    vehicleTypeIdx: index("cars_vehicle_type_idx").on(t.vehicleType),
     locationIdx: index("cars_location_idx").on(t.location),
     availableIdx: index("cars_available_idx").on(t.available),
     approvalIdx: index("cars_approval_idx").on(t.listingApprovalStatus),
