@@ -18,7 +18,13 @@ import { formatINR, type CarData } from "@/components/car-card";
 import { buildBookingWhatsAppUrl } from "@/lib/whatsapp";
 import { formatBookingDateTime } from "@/lib/constants/booking-times";
 import { sumDailyRates, driverDailyMidpoint } from "@/lib/rental-listing";
-import { isTwoWheeler } from "@/lib/constants/vehicle-types";
+import {
+  computeBookingPaymentQuote,
+  normalizeBookingPaymentSettings,
+  type BookingPaymentSettings,
+} from "@/lib/booking-payment-settings";
+import { BookingPaymentSummary, CollateralChoiceForm } from "@/components/booking-payment-summary";
+import type { CollateralType } from "@/lib/constants/collateral";
 import { differenceInDays } from "date-fns";
 import { CreditCard, MessageCircle, UserCheck, CheckCircle2, Upload, IdCard, FileText, FlaskConical } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -124,10 +130,13 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
   const { data: appConfig } = useQuery({
     queryKey: ["app-config"],
     queryFn: () =>
-      apiFetch<{ bookingSandbox: boolean; paymentsEnabled: boolean }>("/api/config/public"),
+      apiFetch<{ bookingSandbox: boolean; paymentsEnabled: boolean; bookingPayments: BookingPaymentSettings }>(
+        "/api/config/public"
+      ),
     staleTime: 60_000,
   });
   const bookingSandbox = appConfig?.bookingSandbox ?? true;
+  const paymentSettings = normalizeBookingPaymentSettings(appConfig?.bookingPayments);
 
   const [name, setName] = useState(user?.name ?? "");
   const [phone, setPhone] = useState("");
@@ -137,13 +146,20 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
   const [licenseUrl, setLicenseUrl] = useState("");
   const [uploadingDoc, setUploadingDoc] = useState<"aadhar" | "license" | null>(null);
   const [busy, setBusy] = useState<"pay" | "whatsapp" | null>(null);
+  const [collateralType, setCollateralType] = useState<CollateralType | "">("");
+  const [collateralDetail, setCollateralDetail] = useState("");
 
   const days = differenceInDays(new Date(returnDate), new Date(pickupDate));
   const driverPerDay = driverDailyMidpoint(car.listing);
-  const showChauffeur = driverPerDay > 0 && !isTwoWheeler(car.vehicleType);
+  const showChauffeur = driverPerDay > 0;
   const carTotal = sumDailyRates(pickupDate, returnDate, car.pricePerDay);
   const driverTotal = withDriver && showChauffeur ? days * driverPerDay : 0;
   const grandTotal = carTotal + driverTotal;
+  const paymentQuote = computeBookingPaymentQuote(paymentSettings, car.listing, carTotal, driverTotal);
+  const payNowAmount =
+    paymentQuote.advanceEnabled && paymentQuote.advanceAmount > 0
+      ? paymentQuote.advanceAmount
+      : grandTotal;
   const carLabel = `${car.brand} ${car.model}`;
 
   const handleDocUpload = async (kind: "aadhar" | "license", file: File) => {
@@ -183,6 +199,24 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
       toast({ title: "Licence required", description: "Please upload your driving licence.", variant: "destructive" });
       return false;
     }
+    if (paymentQuote.collateralRequired) {
+      if (collateralType !== "bike_scooty" && collateralType !== "cash_refundable") {
+        toast({
+          title: "Security choice required",
+          description: "Select bike/scooty deposit or refundable cash deposit.",
+          variant: "destructive",
+        });
+        return false;
+      }
+      if (collateralType === "bike_scooty" && !collateralDetail.trim()) {
+        toast({
+          title: "Bike / scooty details required",
+          description: "Enter model and registration number.",
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
     return true;
   };
 
@@ -199,6 +233,8 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
       guestEmail: email.trim() || undefined,
       aadharUrl,
       drivingLicenseUrl: licenseUrl,
+      collateralType: collateralType || undefined,
+      collateralDetail: collateralType === "bike_scooty" ? collateralDetail.trim() : undefined,
     };
     return apiFetch<{
       id: number;
@@ -309,17 +345,21 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
             <span className="text-muted-foreground">Rental ({days} {days === 1 ? "day" : "days"})</span>
             <span className="font-medium">{formatINR(carTotal)}</span>
           </div>
-          {withDriver && showChauffeur && (
-            <div className="flex justify-between text-primary">
-              <span>Chauffeur</span>
-              <span className="font-medium">+{formatINR(driverTotal)}</span>
-            </div>
-          )}
-          <div className="flex justify-between font-bold pt-2 border-t border-border/50">
-            <span>Total</span>
-            <span className="text-primary">{formatINR(grandTotal)}</span>
-          </div>
+          <BookingPaymentSummary
+            quote={paymentQuote}
+            collateralType={collateralType || null}
+            collateralDetail={collateralDetail}
+            compact
+          />
         </div>
+
+        <CollateralChoiceForm
+          quote={paymentQuote}
+          value={collateralType}
+          onChange={setCollateralType}
+          detail={collateralDetail}
+          onDetailChange={setCollateralDetail}
+        />
 
         {showChauffeur && (
           <button
@@ -424,7 +464,9 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
                 : "Redirecting to payment…"
               : bookingSandbox
                 ? "Confirm booking (test)"
-                : "Pay now"}
+                : payNowAmount < grandTotal
+                  ? `Pay ${formatINR(payNowAmount)} now`
+                  : `Pay ${formatINR(payNowAmount)}`}
           </Button>
           <Button
             size="lg"

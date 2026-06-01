@@ -16,6 +16,10 @@ interface BookingRow {
   pickupTime?: string;
   returnTime?: string;
   totalPrice: number;
+  advanceAmount?: number;
+  securityDepositAmount?: number;
+  collateralType?: "bike_scooty" | "cash_refundable" | null;
+  collateralDetail?: string | null;
   withDriver: boolean;
   driverPrice: number;
   status: string;
@@ -142,7 +146,21 @@ export default function AdminBookingsPage() {
                       <span className="text-xs text-muted-foreground">Self-drive</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 font-bold">{formatINR(booking.totalPrice)}</td>
+                  <td className="px-6 py-4">
+                    <div className="font-bold">{formatINR(booking.totalPrice)}</div>
+                    {booking.advanceAmount != null && booking.advanceAmount > 0 && (
+                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                        Advance: {formatINR(booking.advanceAmount)}
+                      </div>
+                    )}
+                    {booking.collateralType && (
+                      <div className="text-[10px] text-primary mt-1 capitalize">
+                        {booking.collateralType === "bike_scooty"
+                          ? `Bike/scooty${booking.collateralDetail ? `: ${booking.collateralDetail}` : ""}`
+                          : `Cash deposit ${formatINR(booking.securityDepositAmount ?? 20000)}`}
+                      </div>
+                    )}
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col gap-2 items-start">
                       <Badge variant="outline" className={`capitalize ${getStatusClass(booking.status)}`}>

@@ -27,8 +27,6 @@ export async function GET(req: NextRequest) {
 
     const peer_only = searchParams.get("peer_only");
     const platform_only = searchParams.get("platform_only");
-    const vehicle_type = searchParams.get("vehicle_type");
-
     const conditions = [];
     if (!moderationAll) conditions.push(eq(carsTable.listingApprovalStatus, "approved"));
     if (transmission) conditions.push(eq(carsTable.transmission, transmission as "manual" | "automatic"));
@@ -44,10 +42,6 @@ export async function GET(req: NextRequest) {
     if (platform_only === "true") {
       conditions.push(and(isNull(carsTable.hostUserId), isNull(carsTable.ownerEmail))!);
     }
-    if (vehicle_type === "car" || vehicle_type === "bike" || vehicle_type === "scooty") {
-      conditions.push(eq(carsTable.vehicleType, vehicle_type));
-    }
-
     const baseQuery = db.select().from(carsTable);
     const cars =
       conditions.length > 0 ? await baseQuery.where(and(...conditions)) : await baseQuery;
@@ -92,14 +86,11 @@ export async function POST(req: NextRequest) {
     if (!user || user.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const body = await req.json();
-    const { brand, model, year, pricePerDay, transmission, fuelType, seats, location, description, imageUrl, available, listing, vehicleType } = body;
-    const vType =
-      vehicleType === "bike" || vehicleType === "scooty" || vehicleType === "car" ? vehicleType : "car";
+    const { brand, model, year, pricePerDay, transmission, fuelType, seats, location, description, imageUrl, available, listing } = body;
 
     const [car] = await db
       .insert(carsTable)
       .values({
-        vehicleType: vType,
         brand,
         model,
         year: Number(year),

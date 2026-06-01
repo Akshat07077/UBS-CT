@@ -21,6 +21,11 @@ export type CarListingJson = {
   securityDepositMin: number;
   securityDepositMax: number;
   fuelPolicy: string;
+  /** Per-vehicle overrides — null/omit uses admin global settings. */
+  advancePaymentDisabled?: boolean;
+  advancePaymentOverrideInr?: number | null;
+  advancePaymentOverridePercent?: number | null;
+  securityDepositOverrideInr?: number | null;
 };
 
 export const DEFAULT_FUEL_POLICY = "Fuel not included · Same-to-same return";

@@ -76,6 +76,8 @@ export async function POST(req: NextRequest) {
       guestEmail,
       aadharUrl,
       drivingLicenseUrl,
+      collateralType,
+      collateralDetail,
     } = body;
 
     if (!carId || !pickupDate || !returnDate) {
@@ -101,6 +103,8 @@ export async function POST(req: NextRequest) {
       guestEmail,
       aadharUrl,
       drivingLicenseUrl,
+      collateralType,
+      collateralDetail,
       currentUser,
     });
 

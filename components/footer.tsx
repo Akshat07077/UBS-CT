@@ -42,7 +42,7 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/list-your-car" className="hover:text-primary transition-colors">
-                  List your vehicle
+                  List your car
                 </Link>
               </li>
               <li>

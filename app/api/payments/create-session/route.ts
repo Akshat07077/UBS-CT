@@ -34,14 +34,22 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_URL || `https://${process.env.VERCEL_URL}`;
     const tokenQuery = booking.guestAccessToken ? `&token=${booking.guestAccessToken}` : "";
 
+    const chargeAmount =
+      Number(booking.advanceAmount) > 0 ? Number(booking.advanceAmount) : Number(booking.totalPrice);
+
     const stripeSession = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
         {
           price_data: {
             currency: "inr",
-            product_data: { name: `Car Rental Booking #${booking.id}` },
-            unit_amount: Math.round(Number(booking.totalPrice) * 100),
+            product_data: {
+              name:
+                chargeAmount < Number(booking.totalPrice)
+                  ? `Booking advance #${booking.id}`
+                  : `Rental booking #${booking.id}`,
+            },
+            unit_amount: Math.round(chargeAmount * 100),
           },
           quantity: 1,
         },
@@ -54,7 +62,7 @@ export async function POST(req: NextRequest) {
 
     await db.insert(paymentsTable).values({
       bookingId: booking.id,
-      amount: String(booking.totalPrice),
+      amount: String(chargeAmount),
       paymentStatus: "pending",
       stripeSessionId: stripeSession.id,
     });

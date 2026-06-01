@@ -12,10 +12,15 @@ import { brand } from "@/lib/brand/config";
 import { formatPhonesDisplay } from "@/lib/utils/phone";
 import { toast } from "@/hooks/use-toast";
 import { differenceInDays } from "date-fns";
-import { Users, Fuel, Settings2, MapPin, CheckCircle2, AlertCircle, Shield, Zap, Star, Phone, Building2, CalendarRange, Bike } from "lucide-react";
-import { VEHICLE_TYPE_LABELS, isTwoWheeler, seatsLabelForVehicleType } from "@/lib/constants/vehicle-types";
+import { Users, Fuel, Settings2, MapPin, CheckCircle2, AlertCircle, Shield, Zap, Star, Phone, Building2, CalendarRange } from "lucide-react";
 import { formatINR, type CarData } from "@/components/car-card";
 import { sumDailyRates, pricingContextLabel, scaledDayBand } from "@/lib/rental-listing";
+import {
+  computeBookingPaymentQuote,
+  normalizeBookingPaymentSettings,
+  type BookingPaymentSettings,
+} from "@/lib/booking-payment-settings";
+import { BookingPaymentSummary } from "@/components/booking-payment-summary";
 import { BookingDialog } from "@/components/booking-dialog";
 import { CarImageSlider } from "@/components/car-image-slider";
 import {
@@ -50,6 +55,14 @@ function CarDetailPage() {
     queryKey: ["car", id],
     queryFn: () => apiFetch<CarData>(`/api/cars/${id}`),
   });
+
+  const { data: appConfig } = useQuery({
+    queryKey: ["app-config"],
+    queryFn: () =>
+      apiFetch<{ bookingPayments: BookingPaymentSettings }>("/api/config/public"),
+    staleTime: 60_000,
+  });
+  const paymentSettings = normalizeBookingPaymentSettings(appConfig?.bookingPayments);
 
   const [pickupDate, setPickupDate] = useState(
     () => searchParams.get("pickup") || defaultPickupYmd()
@@ -98,7 +111,12 @@ function CarDetailPage() {
   const days = pickupDate && returnDate ? differenceInDays(new Date(returnDate), new Date(pickupDate)) : 0;
   const L = car.listing;
   const rentalTotal = pickupDate && returnDate && days > 0 ? sumDailyRates(pickupDate, returnDate, car.pricePerDay) : 0;
-  const total = rentalTotal;
+  const driverTotal = 0;
+  const total = rentalTotal + driverTotal;
+  const paymentQuote =
+    pickupDate && returnDate && days > 0
+      ? computeBookingPaymentQuote(paymentSettings, car.listing, rentalTotal, driverTotal)
+      : null;
   const isAvailable = isChecking ? undefined : (availability?.available ?? false);
   const now = new Date();
   const todayBand = L ? scaledDayBand(car.pricePerDay, L.pricePerDayMax, now) : null;
@@ -144,11 +162,6 @@ function CarDetailPage() {
             <div className="bg-card p-5 md:p-8 rounded-2xl md:rounded-3xl shadow-xl border border-border/50">
               <div className="flex flex-wrap items-center gap-3 mb-4">
                 <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-none px-3 py-1">{car.year}</Badge>
-                {car.vehicleType && car.vehicleType !== "car" && (
-                  <Badge variant="outline" className="capitalize border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300">
-                    {VEHICLE_TYPE_LABELS[car.vehicleType]}
-                  </Badge>
-                )}
                 <Badge variant="outline" className="capitalize border-border/50">{car.fuelType}</Badge>
                 {!car.available && <Badge variant="destructive">Currently Unavailable</Badge>}
                 {car.listingApprovalStatus === "pending" && (
@@ -174,11 +187,7 @@ function CarDetailPage() {
                 {[
                   { icon: Settings2, label: "Gearbox", value: car.transmission },
                   { icon: Fuel, label: "Fuel", value: car.fuelType },
-                  {
-                    icon: isTwoWheeler(car.vehicleType) ? Bike : Users,
-                    label: seatsLabelForVehicleType(car.vehicleType),
-                    value: `${car.seats}`,
-                  },
+                  { icon: Users, label: "Seats", value: `${car.seats}` },
                 ].map(({ icon: Icon, label, value }) => (
                   <div key={label} className="flex flex-col gap-1.5 sm:gap-2 bg-muted/40 rounded-xl p-3 sm:p-4 min-w-0 overflow-hidden">
                     <span className="text-muted-foreground text-[10px] sm:text-xs font-semibold leading-tight truncate">
@@ -307,10 +316,17 @@ function CarDetailPage() {
                       <span className="text-muted-foreground">GST & Taxes</span>
                       <span className="font-medium text-green-600">Included</span>
                     </div>
-                    <div className="border-t border-border/50 pt-3 flex justify-between items-center">
-                      <span className="font-bold">Estimated total</span>
-                      <span className="font-bold text-xl text-primary">{formatINR(total)}</span>
-                    </div>
+                    {paymentQuote && (
+                      <div className="border-t border-border/50 pt-3 mt-1">
+                        <BookingPaymentSummary quote={paymentQuote} compact />
+                      </div>
+                    )}
+                    {!paymentQuote && (
+                      <div className="border-t border-border/50 pt-3 flex justify-between items-center">
+                        <span className="font-bold">Estimated total</span>
+                        <span className="font-bold text-xl text-primary">{formatINR(total)}</span>
+                      </div>
+                    )}
                     {isChecking ? (
                       <p className="text-xs text-muted-foreground mt-3 text-center">Checking availability...</p>
                     ) : isAvailable ? (
@@ -411,11 +427,15 @@ function CarDetailPage() {
                       <p className="text-xs text-muted-foreground mt-1">Add-on when you book with chauffeur.</p>
                     </div>
                   )}
-                  <div className="rounded-xl bg-muted/40 p-4 border border-border/50">
-                    <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Security deposit (self-drive)</p>
-                    <p className="font-semibold">{formatINR(L.securityDepositMin)} – {formatINR(L.securityDepositMax)}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Refundable after vehicle inspection.</p>
-                  </div>
+                  {paymentQuote?.collateralRequired && (
+                    <div className="rounded-xl bg-amber-500/10 p-4 border border-amber-500/30 sm:col-span-2">
+                      <p className="text-xs font-bold uppercase text-amber-800 dark:text-amber-200 mb-1">At pickup (required)</p>
+                      <p className="text-sm font-medium">
+                        Choose: leave your bike/scooty, or {formatINR(paymentQuote.cashRefundableAmountInr)} refundable cash deposit.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">{paymentQuote.collateralSectionHelp}</p>
+                    </div>
+                  )}
                   <div className="rounded-xl bg-muted/40 p-4 border border-border/50 sm:col-span-2">
                     <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Fuel policy</p>
                     <p className="font-medium">{L.fuelPolicy}</p>

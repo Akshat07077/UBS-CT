@@ -7,12 +7,25 @@ import { DEFAULT_PICKUP_TIME, DEFAULT_RETURN_TIME, isValidBookingTime } from "@/
 import { websiteAvailabilityConflictConditions, guestPendingReleaseConditions } from "@/lib/booking-availability";
 import type { User } from "@/lib/db/schema";
 import { createLead } from "@/lib/leads";
+import {
+  computeBookingPaymentQuote,
+  securityDepositForCollateral,
+} from "@/lib/booking-payment-settings";
+import { getBookingPaymentSettings } from "@/lib/db/site-settings";
+import type { CollateralType } from "@/lib/constants/collateral";
 
 export function formatBooking(b: typeof bookingsTable.$inferSelect) {
+  const totalPrice = Number(b.totalPrice);
+  const advanceAmount = Number(b.advanceAmount);
   return {
     ...b,
-    totalPrice: Number(b.totalPrice),
+    totalPrice,
     driverPrice: Number(b.driverPrice),
+    advanceAmount,
+    securityDepositAmount: Number(b.securityDepositAmount),
+    balanceDue: Math.max(0, totalPrice - advanceAmount),
+    collateralType: b.collateralType ?? null,
+    collateralDetail: b.collateralDetail ?? null,
   };
 }
 
@@ -35,6 +48,8 @@ export async function createBooking(input: {
   guestEmail?: string;
   aadharUrl?: string;
   drivingLicenseUrl?: string;
+  collateralType?: CollateralType;
+  collateralDetail?: string;
   currentUser?: User | null;
 }) {
   const {
@@ -49,6 +64,8 @@ export async function createBooking(input: {
     guestEmail,
     aadharUrl,
     drivingLicenseUrl,
+    collateralType,
+    collateralDetail,
     currentUser,
   } = input;
 
@@ -107,7 +124,31 @@ export async function createBooking(input: {
   const rentalTotal = sumDailyRates(pickupDate, returnDate, Number(car.pricePerDay));
   const driverRate = driverDailyMidpoint(car.listing);
   const driverPrice = withDriver && driverRate > 0 ? days * driverRate : 0;
-  const totalPrice = rentalTotal + driverPrice;
+  const paymentSettings = await getBookingPaymentSettings();
+  const paymentQuote = computeBookingPaymentQuote(
+    paymentSettings,
+    car.listing,
+    rentalTotal,
+    driverPrice
+  );
+  const totalPrice = paymentQuote.totalPrice;
+  const payNow =
+    paymentQuote.advanceEnabled && paymentQuote.advanceAmount > 0
+      ? paymentQuote.advanceAmount
+      : totalPrice;
+
+  if (paymentQuote.collateralRequired) {
+    if (collateralType !== "bike_scooty" && collateralType !== "cash_refundable") {
+      throw new BookingError("Please choose bike/scooty deposit or cash refundable deposit", 400);
+    }
+    if (collateralType === "bike_scooty" && !collateralDetail?.trim()) {
+      throw new BookingError("Please enter your bike or scooty details (model and registration)", 400);
+    }
+  }
+
+  const securityDepositAmount = collateralType
+    ? securityDepositForCollateral(collateralType, paymentQuote.cashRefundableAmountInr)
+    : 0;
 
   const guestAccessToken = isGuest ? crypto.randomBytes(16).toString("hex") : null;
 
@@ -121,6 +162,10 @@ export async function createBooking(input: {
       pickupTime,
       returnTime,
       totalPrice: String(totalPrice),
+      advanceAmount: String(payNow),
+      securityDepositAmount: String(securityDepositAmount),
+      collateralType: collateralType ?? null,
+      collateralDetail: collateralType === "bike_scooty" ? collateralDetail?.trim() || null : null,
       withDriver: !!withDriver,
       driverPrice: String(driverPrice),
       status: "pending",
@@ -155,6 +200,9 @@ export async function createBooking(input: {
       pickupTime,
       returnTime,
       totalPrice,
+      advanceAmount: payNow,
+      collateralType,
+      securityDepositAmount,
       withDriver: !!withDriver,
       bookingStatus: booking.status,
     },
@@ -162,6 +210,7 @@ export async function createBooking(input: {
 
   return {
     booking: formatBooking(booking),
+    paymentQuote,
     guestAccessToken,
     car,
   };

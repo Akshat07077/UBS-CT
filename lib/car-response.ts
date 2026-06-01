@@ -36,7 +36,6 @@ function baseFields(car: Car, galleryUrls?: string[] | null) {
   const images = buildImageList(car, galleryUrls);
   return {
     id: car.id,
-    vehicleType: car.vehicleType,
     brand: car.brand,
     model: car.model,
     year: car.year,

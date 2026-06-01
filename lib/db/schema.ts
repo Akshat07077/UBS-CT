@@ -17,8 +17,9 @@ import type { CarListingJson } from "@/lib/rental-listing";
 export const userRoleEnum = pgEnum("user_role", ["user", "admin"]);
 export const transmissionEnum = pgEnum("transmission", ["manual", "automatic"]);
 export const fuelTypeEnum = pgEnum("fuel_type", ["petrol", "diesel", "electric", "hybrid"]);
-export const vehicleTypeEnum = pgEnum("vehicle_type", ["car", "bike", "scooty"]);
 export const bookingStatusEnum = pgEnum("booking_status", ["pending", "confirmed", "cancelled", "completed"]);
+/** Pickup collateral: leave bike/scooty OR pay refundable cash deposit. */
+export const collateralTypeEnum = pgEnum("collateral_type", ["bike_scooty", "cash_refundable"]);
 /** website = blocks public availability; manual = admin-only calendar entry (offline booking). */
 export const bookingSourceEnum = pgEnum("booking_source", ["website", "manual"]);
 export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "failed", "refunded"]);
@@ -26,6 +27,16 @@ export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "f
 export const listingApprovalEnum = pgEnum("listing_approval_status", ["approved", "pending", "rejected"]);
 export const leadTypeEnum = pgEnum("lead_type", ["contact", "list_car", "booking"]);
 export const leadStatusEnum = pgEnum("lead_status", ["new", "contacted", "closed"]);
+
+/** Key-value site configuration (booking payments, etc.). */
+export const siteSettingsTable = pgTable(
+  "site_settings",
+  {
+    key: text("key").primaryKey(),
+    value: jsonb("value").notNull(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  }
+);
 
 export const usersTable = pgTable(
   "users",
@@ -47,7 +58,6 @@ export const carsTable = pgTable(
   "cars",
   {
     id: serial("id").primaryKey(),
-    vehicleType: vehicleTypeEnum("vehicle_type").notNull().default("car"),
     brand: text("brand").notNull(),
     model: text("model").notNull(),
     year: integer("year").notNull(),
@@ -71,7 +81,6 @@ export const carsTable = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => ({
-    vehicleTypeIdx: index("cars_vehicle_type_idx").on(t.vehicleType),
     locationIdx: index("cars_location_idx").on(t.location),
     availableIdx: index("cars_available_idx").on(t.available),
     approvalIdx: index("cars_approval_idx").on(t.listingApprovalStatus),
@@ -108,6 +117,13 @@ export const bookingsTable = pgTable(
     pickupTime: text("pickup_time").notNull().default("10:00"),
     returnTime: text("return_time").notNull().default("10:00"),
     totalPrice: numeric("total_price", { precision: 10, scale: 2 }).notNull(),
+    /** Amount due online now (advance); remainder paid at pickup. */
+    advanceAmount: numeric("advance_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+    /** Refundable deposit amount (₹) when collateral is cash; 0 for bike/scooty. */
+    securityDepositAmount: numeric("security_deposit_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+    collateralType: collateralTypeEnum("collateral_type"),
+    /** Bike/scooty model or reg when collateral is two-wheeler. */
+    collateralDetail: text("collateral_detail"),
     withDriver: boolean("with_driver").notNull().default(false),
     driverPrice: numeric("driver_price", { precision: 10, scale: 2 }).notNull().default("0"),
     status: bookingStatusEnum("status").notNull().default("pending"),

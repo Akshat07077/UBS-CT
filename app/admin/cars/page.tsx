@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Car as CarIcon, Clock, ChevronUp, ChevronDown, GripVertical, Upload } from "lucide-react";
 import { formatINR, type CarData } from "@/components/car-card";
+import { peerHostListingJson } from "@/lib/rental-listing";
 import { canPreviewImageUrl, uploadImageToApi } from "@/lib/upload-client";
 import { INDIA_CITY_OPTIONS, OTHER_CITY_OPTION, PAN_INDIA_CITY } from "@/lib/constants/india-cities";
 
@@ -185,9 +186,6 @@ export default function AdminCarsPage() {
                         <div className="font-semibold text-foreground text-sm truncate">{car.brand} {car.model}</div>
                         <div className="text-[11px] text-muted-foreground truncate">
                           {car.year} · {car.location}
-                          {car.vehicleType && car.vehicleType !== "car" && (
-                            <span className="ml-1 capitalize">· {car.vehicleType}</span>
-                          )}
                         </div>
                         {car.ownerEmail && (
                           <div className="text-[10px] text-muted-foreground mt-0.5 max-w-[12rem] truncate" title={car.ownerEmail}>
@@ -340,15 +338,25 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
       setIsSubmitting(false);
       return;
     }
-    const vt = fd.get("vehicleType");
-    const vehicleType =
-      vt === "bike" || vt === "scooty" || vt === "car" ? vt : car?.vehicleType ?? "car";
+    const pricePerDay = parseFloat(fd.get("pricePerDay") as string);
+    const listingBase =
+      car?.listing ??
+      peerHostListingJson(car?.ownerName ?? "Fleet", pricePerDay);
+    const advanceOverrideRaw = String(fd.get("advancePaymentOverrideInr") || "").trim();
+    const advancePercentRaw = String(fd.get("advancePaymentOverridePercent") || "").trim();
+
+    const listing = {
+      ...listingBase,
+      advancePaymentDisabled: fd.get("advancePaymentDisabled") === "true",
+      advancePaymentOverrideInr: advanceOverrideRaw ? parseFloat(advanceOverrideRaw) : null,
+      advancePaymentOverridePercent: advancePercentRaw ? parseFloat(advancePercentRaw) : null,
+    };
+
     const data = {
-      vehicleType,
       brand: fd.get("brand"),
       model: fd.get("model"),
       year: parseInt(fd.get("year") as string),
-      pricePerDay: parseFloat(fd.get("pricePerDay") as string),
+      pricePerDay,
       transmission: fd.get("transmission"),
       fuelType: fd.get("fuelType"),
       seats: parseInt(fd.get("seats") as string),
@@ -357,6 +365,7 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
       available: fd.get("available") === "true",
       imageUrl: urls[0] ?? null,
       images: urls,
+      listing,
     };
     try {
       if (car) {
@@ -477,17 +486,46 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label>Vehicle type</Label>
-        <select
-          name="vehicleType"
-          defaultValue={car?.vehicleType ?? "car"}
-          className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
-        >
-          <option value="car">Car</option>
-          <option value="bike">Bike</option>
-          <option value="scooty">Scooty</option>
-        </select>
+      <div className="p-4 rounded-xl border border-border/60 bg-muted/20 space-y-4">
+        <div>
+          <Label className="text-base">Booking advance (this car)</Label>
+          <p className="text-xs text-muted-foreground mt-1">Pickup security (bike/scooty vs ₹20k) is set in Admin → Payments.</p>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Advance override (₹)</Label>
+            <Input
+              name="advancePaymentOverrideInr"
+              type="number"
+              min={0}
+              placeholder="Use global"
+              defaultValue={car?.listing?.advancePaymentOverrideInr ?? ""}
+              className="rounded-lg"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Advance override (%)</Label>
+            <Input
+              name="advancePaymentOverridePercent"
+              type="number"
+              min={0}
+              max={100}
+              placeholder="Use global"
+              defaultValue={car?.listing?.advancePaymentOverridePercent ?? ""}
+              className="rounded-lg"
+            />
+          </div>
+        </div>
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            name="advancePaymentDisabled"
+            value="true"
+            defaultChecked={car?.listing?.advancePaymentDisabled === true}
+            className="accent-primary"
+          />
+          Disable booking advance for this car
+        </label>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
