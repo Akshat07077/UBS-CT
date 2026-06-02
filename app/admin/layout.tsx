@@ -19,6 +19,7 @@ import {
   Menu,
   X,
   IndianRupee,
+  Download,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
@@ -30,6 +31,7 @@ const NAV = [
   { href: "/admin/leads", label: "All forms", icon: Inbox },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/settings", label: "Payments", icon: IndianRupee },
+  { href: "/admin/export", label: "Export CSV", icon: Download },
 ];
 
 function currentPageLabel(pathname: string) {
