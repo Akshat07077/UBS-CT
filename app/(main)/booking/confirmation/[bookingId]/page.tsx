@@ -77,7 +77,7 @@ function ConfirmationContent() {
         </h1>
         <p className="text-lg text-muted-foreground mb-12 max-w-lg mx-auto">
           {sandboxMode
-            ? "Sandbox mode — no payment was charged. Use this to test the full flow before going live with Stripe."
+            ? "Sandbox mode. No payment was charged. Use this to test the full flow before going live with Stripe."
             : isPaid
               ? "Your reservation is confirmed. We'll reach you on the phone number you provided."
               : "Your booking is pending. Complete payment or wait for our team to confirm on WhatsApp."}

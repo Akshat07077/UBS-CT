@@ -219,7 +219,10 @@ export default function AdminCarsPage() {
                     <div className="capitalize">{car.transmission}</div>
                     <div className="capitalize">{car.fuelType} · {car.seats} seats</div>
                   </td>
-                  <td className="px-3 py-2.5 align-middle font-bold text-primary whitespace-nowrap">{formatINR(car.pricePerDay)}</td>
+                  <td className="px-3 py-2.5 align-middle font-bold text-primary whitespace-nowrap">
+                    <div>{formatINR(car.pricePerDay)}<span className="text-[10px] font-normal text-muted-foreground"> /day</span></div>
+                    <div className="text-sm">{formatINR(car.pricePerHour)}<span className="text-[10px] font-normal text-muted-foreground"> /hr</span></div>
+                  </td>
                   <td className="px-3 py-2.5 align-middle whitespace-nowrap">
                     <Badge variant={car.available ? "default" : "secondary"} className={car.available ? "bg-green-500/10 text-green-600 hover:bg-green-500/20 shadow-none" : ""}>
                       {car.available ? "Available" : "Unavailable"}
@@ -339,6 +342,7 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
       return;
     }
     const pricePerDay = parseFloat(fd.get("pricePerDay") as string);
+    const pricePerHour = parseFloat(fd.get("pricePerHour") as string);
     const listingBase =
       car?.listing ??
       peerHostListingJson(car?.ownerName ?? "Fleet", pricePerDay);
@@ -357,6 +361,7 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
       model: fd.get("model"),
       year: parseInt(fd.get("year") as string),
       pricePerDay,
+      pricePerHour,
       transmission: fd.get("transmission"),
       fuelType: fd.get("fuelType"),
       seats: parseInt(fd.get("seats") as string),
@@ -533,6 +538,7 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
         <div className="space-y-2"><Label>Model</Label><Input name="model" defaultValue={car?.model} required className="rounded-lg" /></div>
         <div className="space-y-2"><Label>Year</Label><Input name="year" type="number" defaultValue={car?.year} required className="rounded-lg" /></div>
         <div className="space-y-2"><Label>Price Per Day (₹)</Label><Input name="pricePerDay" type="number" step="1" defaultValue={car?.pricePerDay} required className="rounded-lg" /></div>
+        <div className="space-y-2"><Label>Price Per Hour (₹)</Label><Input name="pricePerHour" type="number" step="1" defaultValue={car?.pricePerHour ?? (car?.pricePerDay ? Math.max(1, Math.round(car.pricePerDay / 24)) : undefined)} required className="rounded-lg" /></div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

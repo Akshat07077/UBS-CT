@@ -16,6 +16,7 @@ const createSchema = z.object({
   model: z.string().trim().min(1).max(80),
   year: z.coerce.number().int().min(1990).max(2030),
   pricePerDay: z.coerce.number().positive().max(500_000),
+  pricePerHour: z.coerce.number().positive().max(50_000),
   transmission: z.enum(["manual", "automatic"]),
   fuelType: z.enum(["petrol", "diesel", "electric", "hybrid"]),
   seats: z.coerce.number().int().min(2).max(12),
@@ -74,6 +75,7 @@ export async function POST(req: NextRequest) {
       model,
       year,
       pricePerDay,
+      pricePerHour,
       transmission,
       fuelType,
       seats,
@@ -103,6 +105,7 @@ export async function POST(req: NextRequest) {
         model,
         year,
         pricePerDay: String(pricePerDay),
+        pricePerHour: String(pricePerHour),
         transmission,
         fuelType,
         seats,
@@ -145,7 +148,7 @@ export async function POST(req: NextRequest) {
       {
         id: car.id,
         listingApprovalStatus: car.listingApprovalStatus,
-        message: "Thanks — your listing is pending admin approval. You will be contacted at the email or phone you provided.",
+        message: "Thanks. Your listing is pending admin approval. You will be contacted at the email or phone you provided.",
       },
       { status: 201 }
     );

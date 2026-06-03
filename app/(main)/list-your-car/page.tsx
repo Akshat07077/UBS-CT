@@ -45,7 +45,7 @@ export default function ListYourCarPage() {
     try {
       setIsUploading(true);
       setUploadingIndex(index);
-      toast({ title: "Preparing photo…", description: "Compressing for upload — please wait." });
+      toast({ title: "Preparing photo…", description: "Compressing for upload. Please wait." });
       const data = await uploadImageToApi("/api/upload/listing-photo", file);
       setGallery((prev) => {
         const next = [...prev];
@@ -89,6 +89,7 @@ export default function ListYourCarPage() {
       model: String(fd.get("model") || "").trim(),
       year: parseInt(String(fd.get("year")), 10),
       pricePerDay: parseFloat(String(fd.get("pricePerDay"))),
+      pricePerHour: parseFloat(String(fd.get("pricePerHour"))),
       transmission: fd.get("transmission"),
       fuelType: fd.get("fuelType"),
       seats: parseInt(String(fd.get("seats")), 10),
@@ -272,6 +273,11 @@ export default function ListYourCarPage() {
             <div className="space-y-2">
               <Label htmlFor="pricePerDay">Price per day (₹)</Label>
               <Input id="pricePerDay" name="pricePerDay" type="number" step="1" min={1} required className="rounded-xl" placeholder="1200" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pricePerHour">Price per hour (₹)</Label>
+              <Input id="pricePerHour" name="pricePerHour" type="number" step="1" min={1} required className="rounded-xl" placeholder="50" />
+              <p className="text-xs text-muted-foreground">Used for rentals under 24 hours and extra hours after full days.</p>
             </div>
           </div>
 

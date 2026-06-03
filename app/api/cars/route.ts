@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
       message.includes("DATABASE_URL") || message.includes("connect")
         ? "Check DATABASE_URL on Vercel and run npm run db:push"
         : message.includes("car_images") || message.includes("relation") || message.includes("does not exist")
-          ? "Database schema out of date — run npm run db:push then npm run db:seed"
+          ? "Database schema out of date. Run npm run db:push then npm run db:seed"
           : undefined;
     return NextResponse.json({ error: hint ?? "Internal server error" }, { status: 500 });
   }
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     if (!user || user.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const body = await req.json();
-    const { brand, model, year, pricePerDay, transmission, fuelType, seats, location, description, imageUrl, available, listing } = body;
+    const { brand, model, year, pricePerDay, pricePerHour, transmission, fuelType, seats, location, description, imageUrl, available, listing } = body;
 
     const [car] = await db
       .insert(carsTable)
@@ -95,6 +95,7 @@ export async function POST(req: NextRequest) {
         model,
         year: Number(year),
         pricePerDay: String(pricePerDay),
+        pricePerHour: String(pricePerHour ?? Math.max(1, Math.round(Number(pricePerDay) / 24))),
         transmission,
         fuelType,
         seats: Number(seats),

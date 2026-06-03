@@ -5,12 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Users, Fuel, Settings2, MapPin, Sparkles } from "lucide-react";
 import type { CarListingJson } from "@/lib/rental-listing";
-import { pricingContextLabel, scaledDayBand } from "@/lib/rental-listing";
 import { carDetailHref, type BookingSearchParams } from "@/lib/booking-search-params";
-import {
-  DEFAULT_PRICING_UPLIFT_SETTINGS,
-  type PricingUpliftSettings,
-} from "@/lib/pricing-uplift-settings";
 
 export type { CarListingJson };
 
@@ -22,6 +17,7 @@ export interface CarData {
   model: string;
   year: number;
   pricePerDay: number;
+  pricePerHour: number;
   transmission: string;
   fuelType: string;
   seats: number;
@@ -51,16 +47,12 @@ export function formatINR(amount: number) {
 export function CarCard({
   car,
   bookingSearch,
-  pricingUplift = DEFAULT_PRICING_UPLIFT_SETTINGS,
 }: {
   car: CarData;
   /** Pickup/return (and optional city) from homepage or browse search — forwarded to detail page. */
   bookingSearch?: BookingSearchParams;
-  pricingUplift?: PricingUpliftSettings;
 }) {
   const L = car.listing;
-  const today = new Date();
-  const todayBand = L ? scaledDayBand(car.pricePerDay, L.pricePerDayMax, today, pricingUplift) : null;
   const href = carDetailHref(car.id, bookingSearch);
 
   return (
@@ -114,24 +106,12 @@ export function CarCard({
             )}
           </div>
           <div className="text-right shrink-0">
-            {L ? (
-              <>
-                <p className="text-lg sm:text-xl font-display font-bold text-primary leading-tight">
-                  {formatINR(car.pricePerDay)} – {formatINR(L.pricePerDayMax)}
-                </p>
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Weekday / day</p>
-                {todayBand && (
-                  <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-1 max-w-[9rem] ml-auto leading-snug">
-                    Today ({pricingContextLabel(today, pricingUplift)}): {formatINR(todayBand.from)} – {formatINR(todayBand.to)}
-                  </p>
-                )}
-              </>
-            ) : (
-              <>
-                <p className="text-2xl font-display font-bold text-primary">{formatINR(car.pricePerDay)}</p>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Per day</p>
-              </>
-            )}
+            <p className="text-lg sm:text-xl font-display font-bold text-primary leading-tight">
+              {formatINR(car.pricePerDay)}
+            </p>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Per day</p>
+            <p className="text-sm font-semibold text-foreground mt-1">{formatINR(car.pricePerHour)}</p>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Per hour</p>
           </div>
         </div>
 

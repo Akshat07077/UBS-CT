@@ -106,7 +106,7 @@ export default function AdminBookingsPage() {
                       {booking.user?.name || booking.guestName || "Guest"}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {booking.user?.email || booking.guestPhone || booking.guestEmail || "—"}
+                      {booking.user?.email || booking.guestPhone || booking.guestEmail || "N/A"}
                     </div>
                     {(booking.aadharUrl || booking.drivingLicenseUrl) && (
                       <div className="flex flex-wrap gap-2 mt-2">

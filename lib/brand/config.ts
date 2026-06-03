@@ -20,7 +20,7 @@ export const brand = {
 
   shortName: "UB",
 
-  tagline: "Premium car rental in Indore — drive the difference.",
+  tagline: "Premium car rental in Indore. Drive the difference.",
 
   logo: {
 

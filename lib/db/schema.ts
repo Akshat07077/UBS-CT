@@ -62,6 +62,7 @@ export const carsTable = pgTable(
     model: text("model").notNull(),
     year: integer("year").notNull(),
     pricePerDay: numeric("price_per_day", { precision: 10, scale: 2 }).notNull(),
+    pricePerHour: numeric("price_per_hour", { precision: 10, scale: 2 }).notNull(),
     transmission: transmissionEnum("transmission").notNull(),
     fuelType: fuelTypeEnum("fuel_type").notNull(),
     seats: integer("seats").notNull(),

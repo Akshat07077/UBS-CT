@@ -58,7 +58,7 @@ export default function AdminUsersPage() {
                       <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
                         {(user.name || user.email)[0].toUpperCase()}
                       </div>
-                      <span className="font-semibold">{user.name || "—"}</span>
+                      <span className="font-semibold">{user.name || "N/A"}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-muted-foreground">{user.email}</td>
@@ -68,7 +68,7 @@ export default function AdminUsersPage() {
                     </Badge>
                   </td>
                   <td className="px-6 py-4 text-muted-foreground text-xs">
-                    {user.createdAt ? format(new Date(user.createdAt), "MMM d, yyyy") : "—"}
+                    {user.createdAt ? format(new Date(user.createdAt), "MMM d, yyyy") : "N/A"}
                   </td>
                 </tr>
               ))}

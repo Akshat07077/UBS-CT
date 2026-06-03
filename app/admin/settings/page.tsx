@@ -281,7 +281,7 @@ export default function AdminSettingsPage() {
               <h2 className="font-display font-bold text-lg">Pickup security (bike/scooty or cash)</h2>
             </div>
             <p className="text-xs text-muted-foreground">
-              Renters must choose one option when booking a car. Not a separate rental — collateral only.
+              Renters must choose one option when booking a car. This is collateral only, not a separate rental.
             </p>
             <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
               <input

@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -11,10 +11,9 @@ import { apiFetch } from "@/lib/api";
 import { brand } from "@/lib/brand/config";
 import { formatPhonesDisplay } from "@/lib/utils/phone";
 import { toast } from "@/hooks/use-toast";
-import { differenceInDays } from "date-fns";
 import { Users, Fuel, Settings2, MapPin, CheckCircle2, AlertCircle, Shield, Zap, Star, Phone, Building2, CalendarRange } from "lucide-react";
 import { formatINR, type CarData } from "@/components/car-card";
-import { sumDailyRates, pricingContextLabel, scaledDayBand } from "@/lib/rental-listing";
+import { computeRentalTotal, formatRentalDuration, rentalDurationHours } from "@/lib/rental-listing";
 import {
   computeBookingPaymentQuote,
   normalizeBookingPaymentSettings,
@@ -23,10 +22,11 @@ import {
 import { BookingPaymentSummary } from "@/components/booking-payment-summary";
 import { BookingDialog } from "@/components/booking-dialog";
 import { CarImageSlider } from "@/components/car-image-slider";
+import { BookingTimeSelect } from "@/components/booking-time-select";
 import {
-  DEFAULT_PICKUP_TIME,
   DEFAULT_RETURN_TIME,
-  compareTime24,
+  clampPickupTime,
+  clampReturnTime,
   defaultPickupTimeForDate,
   earliestPickupTimeOnDate,
   earliestReturnTimeSameDay,
@@ -35,8 +35,6 @@ import {
   formatTime12h,
   localDateYmd,
   validateBookingSchedule,
-  isValidBookingTime,
-  BOOKING_TIME_SLOTS,
 } from "@/lib/constants/booking-times";
 import { parseBookingSearchParams } from "@/lib/booking-search-params";
 import {
@@ -45,39 +43,6 @@ import {
   peakSeasonRangeLabel,
 } from "@/lib/pricing-uplift-settings";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-
-function parseLocalYmd(ymd: string): Date {
-  const [y, mo, d] = ymd.split("-").map(Number);
-  return new Date(y, mo - 1, d);
-}
-
-function rentalDayCount(pickupYmd: string, returnYmd: string): number {
-  if (!pickupYmd || !returnYmd || returnYmd < pickupYmd) return 0;
-  return differenceInDays(parseLocalYmd(returnYmd), parseLocalYmd(pickupYmd));
-}
-
-function clampPickupTime(dateYmd: string, time: string): string {
-  const min = earliestPickupTimeOnDate(dateYmd);
-  if (min && compareTime24(time, min) < 0) return min;
-  if (!isValidBookingTime(time)) return BOOKING_TIME_SLOTS[0];
-  return time;
-}
-
-function clampReturnTime(
-  pickupYmd: string,
-  pickupT: string,
-  returnYmd: string,
-  returnT: string
-): string {
-  if (returnYmd !== pickupYmd) {
-    if (!isValidBookingTime(returnT)) return DEFAULT_RETURN_TIME;
-    return returnT;
-  }
-  const min = earliestReturnTimeSameDay(pickupT);
-  if (compareTime24(returnT, min) < 0) return min;
-  if (!isValidBookingTime(returnT)) return min;
-  return returnT;
-}
 
 function defaultPickupYmd() {
   return localDateYmd();
@@ -90,7 +55,7 @@ function defaultReturnYmd() {
 }
 
 const INCLUSIONS = [
-  "Comprehensive insurance included",
+  "Verified vehicle handover",
   "24/7 roadside assistance",
   "GST included in quoted rental",
   "Free cancellation up to 24 hrs",
@@ -130,6 +95,7 @@ function CarDetailPage() {
   );
   const [returnTime, setReturnTime] = useState(searchParams.get("returnTime") ?? DEFAULT_RETURN_TIME);
   const [bookingOpen, setBookingOpen] = useState(false);
+  const urlSynced = useRef(false);
 
   const debouncedPickup = useDebouncedValue(pickupDate, 400);
   const debouncedReturn = useDebouncedValue(returnDate, 400);
@@ -145,29 +111,33 @@ function CarDetailPage() {
   }, [searchParams, pickupDate, returnDate]);
 
   useEffect(() => {
+    if (urlSynced.current) return;
     const booking = parseBookingSearchParams(searchParams);
-    if (booking.pickup) {
-      setPickupDate(booking.pickup);
-      setPickupTime(
-        booking.pickupTime
-          ? clampPickupTime(booking.pickup, booking.pickupTime)
-          : defaultPickupTimeForDate(booking.pickup)
-      );
-    }
-    if (booking.return) {
-      setReturnDate(booking.return);
-      if (booking.returnTime) {
-        setReturnTime(
-          clampReturnTime(
-            booking.pickup ?? pickupDate,
-            booking.pickupTime ?? pickupTime,
-            booking.return,
-            booking.returnTime
-          )
-        );
-      }
-    }
-  }, [searchParams]);
+    if (!booking.pickup && !booking.return && !booking.pickupTime && !booking.returnTime) return;
+    urlSynced.current = true;
+
+    const nextPickup = booking.pickup || pickupDate;
+    const nextReturn = booking.return || returnDate;
+    const nextPickupTime = booking.pickupTime
+      ? clampPickupTime(nextPickup, booking.pickupTime)
+      : defaultPickupTimeForDate(nextPickup);
+    const nextReturnTime = booking.returnTime
+      ? clampReturnTime(nextPickup, nextPickupTime, nextReturn, booking.returnTime)
+      : clampReturnTime(nextPickup, nextPickupTime, nextReturn, returnTime);
+
+    setPickupDate(nextPickup);
+    setReturnDate(nextReturn);
+    setPickupTime(nextPickupTime);
+    setReturnTime(nextReturnTime);
+  }, [searchParams, pickupDate, returnDate, returnTime]);
+
+  useEffect(() => {
+    setPickupTime((t) => clampPickupTime(pickupDate, t));
+  }, [pickupDate]);
+
+  useEffect(() => {
+    setReturnTime((rt) => clampReturnTime(pickupDate, pickupTime, returnDate, rt));
+  }, [pickupDate, pickupTime, returnDate]);
 
   const handlePickupDateChange = (next: string) => {
     setPickupDate(next);
@@ -181,13 +151,12 @@ function CarDetailPage() {
   };
 
   const handlePickupTimeChange = (next: string) => {
-    const t = clampPickupTime(pickupDate, next);
-    setPickupTime(t);
-    setReturnTime((rt) => clampReturnTime(pickupDate, t, returnDate, rt));
+    setPickupTime(next);
+    setReturnTime((rt) => clampReturnTime(pickupDate, next, returnDate, rt));
   };
 
   const handleReturnTimeChange = (next: string) => {
-    setReturnTime(clampReturnTime(pickupDate, pickupTime, returnDate, next));
+    setReturnTime(next);
   };
 
   const {
@@ -224,7 +193,11 @@ function CarDetailPage() {
   const minPickupTime = earliestPickupTimeOnDate(pickupDate);
   const minReturnTime =
     returnDate === pickupDate ? earliestReturnTimeSameDay(pickupTime) : undefined;
-  const days = rentalDayCount(pickupDate, returnDate);
+  const rentalHours =
+    pickupDate && returnDate && pickupTime && returnTime
+      ? rentalDurationHours(pickupDate, pickupTime, returnDate, returnTime)
+      : 0;
+  const rentalLabel = formatRentalDuration(rentalHours);
   const scheduleError =
     pickupDate && returnDate && pickupTime && returnTime
       ? validateBookingSchedule(pickupDate, pickupTime, returnDate, returnTime)
@@ -242,17 +215,24 @@ function CarDetailPage() {
   const isAvailable = availabilitySettled && availability.available === true;
   const L = car.listing;
   const rentalTotal =
-    pickupDate && returnDate && days > 0
-      ? sumDailyRates(pickupDate, returnDate, car.pricePerDay, pricingUplift)
+    pickupDate && returnDate && pickupTime && returnTime && rentalHours > 0
+      ? computeRentalTotal(
+          pickupDate,
+          pickupTime,
+          returnDate,
+          returnTime,
+          car.pricePerDay,
+          car.pricePerHour,
+          pricingUplift
+        )
       : 0;
   const driverTotal = 0;
   const total = rentalTotal + driverTotal;
   const paymentQuote =
-    pickupDate && returnDate && days > 0
+    pickupDate && returnDate && rentalHours > 0
       ? computeBookingPaymentQuote(paymentSettings, car.listing, rentalTotal, driverTotal)
       : null;
-  const now = new Date();
-  const todayBand = L ? scaledDayBand(car.pricePerDay, L.pricePerDayMax, now, pricingUplift) : null;
+
   const isOwnListing = car.isViewerOwner === true;
   const galleryImages =
     car.images && car.images.length > 0 ? car.images : car.imageUrl ? [car.imageUrl] : [];
@@ -353,24 +333,12 @@ function CarDetailPage() {
             <div className="bg-card rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-2xl border border-border/50 lg:sticky lg:top-28">
               <div className="flex items-center justify-between mb-6 gap-3">
                 <div className="min-w-0">
-                  {L ? (
-                    <>
-                      <p className="text-2xl md:text-3xl font-display font-bold text-primary leading-tight">
-                        {formatINR(car.pricePerDay)} – {formatINR(L.pricePerDayMax)}
-                      </p>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Weekday band / day · GST incl.</p>
-                      {todayBand && (
-                        <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
-                          Today: ~{formatINR(todayBand.from)} – {formatINR(todayBand.to)} ({pricingContextLabel(now, pricingUplift)})
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-3xl font-display font-bold text-primary">{formatINR(car.pricePerDay)}</p>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Per day · GST incl.</p>
-                    </>
-                  )}
+                  <p className="text-2xl md:text-3xl font-display font-bold text-primary leading-tight">
+                    {formatINR(car.pricePerDay)}
+                  </p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Per day · GST incl.</p>
+                  <p className="text-lg font-display font-bold text-foreground mt-2">{formatINR(car.pricePerHour)}</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Per hour · under 24h rentals</p>
                 </div>
                 {car.available ? (
                   <span className="text-xs font-semibold text-green-600 dark:text-green-400 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/30 flex items-center gap-1 shrink-0">
@@ -402,13 +370,10 @@ function CarDetailPage() {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Pickup Time</Label>
-                    <Input
-                      type="time"
-                      step={1800}
+                    <BookingTimeSelect
                       value={pickupTime}
-                      onChange={(e) => handlePickupTimeChange(e.target.value)}
-                      min={minPickupTime}
-                      className="h-12 rounded-xl"
+                      onChange={handlePickupTimeChange}
+                      minTime={minPickupTime}
                     />
                     <p className="text-[11px] text-muted-foreground">Selected: {formatTime12h(pickupTime)}</p>
                   </div>
@@ -431,13 +396,10 @@ function CarDetailPage() {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Return Time</Label>
-                    <Input
-                      type="time"
-                      step={1800}
+                    <BookingTimeSelect
                       value={returnTime}
-                      onChange={(e) => handleReturnTimeChange(e.target.value)}
-                      min={minReturnTime}
-                      className="h-12 rounded-xl"
+                      onChange={handleReturnTimeChange}
+                      minTime={minReturnTime}
                     />
                     <p className="text-[11px] text-muted-foreground">Selected: {formatTime12h(returnTime)}</p>
                   </div>
@@ -453,7 +415,9 @@ function CarDetailPage() {
                 {pickupDate && returnDate && (
                   <div className="bg-muted/50 rounded-2xl p-5 border border-border/50">
                     <div className="flex justify-between text-sm mb-3">
-                      <span className="text-muted-foreground">Rental ({days} {days === 1 ? "day" : "days"})</span>
+                      <span className="text-muted-foreground">
+                        Rental{rentalLabel ? ` (${rentalLabel})` : ""}
+                      </span>
                       <span className="font-medium">{formatINR(rentalTotal)}</span>
                     </div>
                     <p className="text-[11px] text-muted-foreground mb-3">
@@ -621,7 +585,8 @@ function CarDetailPage() {
                 <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4 text-sm">
                   <p className="font-semibold text-foreground mb-1">Pricing logic (realistic)</p>
                   <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                    <li>Weekdays use the published low–high band.</li>
+                    <li>Under 24 hours: hourly rate. Exactly 24 hours: one daily rate. Over 24 hours: daily blocks plus hourly for extra time.</li>
+                    <li>The listed price is the base daily rate set by the host or admin.</li>
                     {pricingUplift.weekendUpliftEnabled && (
                       <li>Weekends add +{pricingUplift.weekendUpliftPercent}% on weekday base.</li>
                     )}
@@ -632,11 +597,6 @@ function CarDetailPage() {
                       </li>
                     )}
                   </ul>
-                  {todayBand && (
-                    <p className="mt-3 text-xs font-medium text-primary">
-                      Today ({pricingContextLabel(now, pricingUplift)}): about {formatINR(todayBand.from)} – {formatINR(todayBand.to)} / day for this vehicle.
-                    </p>
-                  )}
                 </div>
               </div>
             )}
@@ -676,7 +636,7 @@ function CarDetailPage() {
                 <p className="text-sm text-muted-foreground">
                   Call us at{" "}
                   <span className="font-semibold text-foreground">{formatPhonesDisplay([...brand.contact.phones])}</span>
-                  {" "}— available 24/7 · {brand.contact.supportNote}.
+                  {". Available 24/7 · "}{brand.contact.supportNote}.
                 </p>
               </div>
             </div>

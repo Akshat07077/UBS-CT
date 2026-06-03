@@ -5,14 +5,95 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/brand-logo";
 import { brand } from "@/lib/brand/config";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { User, LogOut, LayoutDashboard, Settings, Menu, X, Home, MessageSquare, CirclePlus, Car } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  LogOut,
+  LayoutDashboard,
+  Settings,
+  Menu,
+  X,
+  Home,
+  MessageSquare,
+  CirclePlus,
+  Car,
+  Shield,
+} from "lucide-react";
 import { useState } from "react";
 
 const linkClass = (active: boolean) =>
   `text-xs font-bold uppercase tracking-[0.2em] transition-colors ${
     active ? "text-primary" : "text-zinc-400 hover:text-zinc-100"
   }`;
+
+function userInitials(name: string | null | undefined, email: string) {
+  if (name?.trim()) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  return email.slice(0, 2).toUpperCase();
+}
+
+function UserAvatar({
+  name,
+  email,
+  size = "md",
+  className,
+}: {
+  name?: string | null;
+  email: string;
+  size?: "sm" | "md" | "lg";
+  className?: string;
+}) {
+  const initials = userInitials(name, email);
+  const sizeClass =
+    size === "lg" ? "h-11 w-11 text-sm" : size === "sm" ? "h-8 w-8 text-[10px]" : "h-9 w-9 text-xs";
+  return (
+    <div
+      className={cn(
+        "rounded-full flex items-center justify-center font-bold shrink-0",
+        "bg-gradient-to-br from-primary/90 via-amber-500 to-amber-700 text-zinc-950 shadow-inner",
+        sizeClass,
+        className
+      )}
+      aria-hidden
+    >
+      {initials}
+    </div>
+  );
+}
+
+function MenuIcon({
+  icon: Icon,
+  tone = "default",
+}: {
+  icon: React.ElementType;
+  tone?: "default" | "primary" | "admin" | "danger";
+}) {
+  const tones = {
+    default: "bg-zinc-800/80 text-zinc-300 group-hover:text-zinc-100",
+    primary: "bg-primary/15 text-primary group-hover:bg-primary/25",
+    admin: "bg-amber-500/15 text-amber-400 group-hover:bg-amber-500/25",
+    danger: "bg-red-500/10 text-red-400 group-hover:bg-red-500/20",
+  };
+  return (
+    <span
+      className={cn(
+        "mr-3 flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
+        tones[tone]
+      )}
+    >
+      <Icon className="h-4 w-4" />
+    </span>
+  );
+}
 
 export function Navbar() {
   const { user, logout } = useAuth();
@@ -67,41 +148,63 @@ export function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="relative h-9 w-9 md:h-10 md:w-10 rounded-full border border-zinc-700 bg-zinc-900/80 hover:bg-zinc-800"
+                    className="relative h-10 w-10 rounded-full p-0 ring-2 ring-primary/40 ring-offset-2 ring-offset-zinc-950 hover:ring-primary/70 hover:bg-transparent transition-all"
+                    aria-label="Account menu"
                   >
-                    <User className="h-4 w-4 md:h-5 md:w-5 text-zinc-200" />
+                    <UserAvatar name={user.name} email={user.email} size="md" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 mt-2 border-zinc-800 bg-zinc-950">
-                  <DropdownMenuLabel>
-                    <p className="text-sm font-bold">{user.name || "User"}</p>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-zinc-800" />
-                  <DropdownMenuItem asChild>
-                    <Link href="/list-your-car" className="cursor-pointer flex items-center py-2 focus:bg-zinc-900">
-                      <CirclePlus className="mr-2 h-4 w-4" /> List your car
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard" className="cursor-pointer flex items-center py-2 focus:bg-zinc-900">
-                      <LayoutDashboard className="mr-2 h-4 w-4" /> My account
-                    </Link>
-                  </DropdownMenuItem>
-                  {user.role === "admin" && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/admin/cars" className="cursor-pointer flex items-center py-2 focus:bg-zinc-900">
-                        <Settings className="mr-2 h-4 w-4" /> Admin Dashboard
+                <DropdownMenuContent
+                  align="end"
+                  sideOffset={10}
+                  className="w-72 p-0 overflow-hidden rounded-2xl border border-zinc-800/90 bg-zinc-950/95 backdrop-blur-xl shadow-2xl shadow-black/50"
+                >
+                  <div className="px-4 py-4 bg-gradient-to-br from-zinc-900 via-zinc-950 to-black border-b border-zinc-800/80">
+                    <div className="flex items-center gap-3">
+                      <UserAvatar name={user.name} email={user.email} size="lg" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-zinc-50 truncate">{user.name || "User"}</p>
+                        <p className="text-xs text-zinc-400 truncate mt-0.5">{user.email}</p>
+                        {user.role === "admin" && (
+                          <span className="inline-flex items-center gap-1 mt-2 text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/25 rounded-full px-2 py-0.5">
+                            <Shield className="w-3 h-3" /> Admin
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-2">
+                    <DropdownMenuItem asChild className="rounded-xl px-2 py-2.5 cursor-pointer focus:bg-zinc-900/80">
+                      <Link href="/list-your-car" className="group flex items-center w-full">
+                        <MenuIcon icon={CirclePlus} tone="primary" />
+                        <span className="font-medium text-zinc-200">List your car</span>
                       </Link>
                     </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator className="bg-zinc-800" />
-                  <DropdownMenuItem
-                    onClick={handleLogout}
-                    className="cursor-pointer text-destructive focus:text-destructive py-2 focus:bg-zinc-900"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" /> Log out
-                  </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="rounded-xl px-2 py-2.5 cursor-pointer focus:bg-zinc-900/80">
+                      <Link href="/dashboard" className="group flex items-center w-full">
+                        <MenuIcon icon={LayoutDashboard} />
+                        <span className="font-medium text-zinc-200">My account</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    {user.role === "admin" && (
+                      <DropdownMenuItem asChild className="rounded-xl px-2 py-2.5 cursor-pointer focus:bg-zinc-900/80">
+                        <Link href="/admin" className="group flex items-center w-full">
+                          <MenuIcon icon={Settings} tone="admin" />
+                          <span className="font-medium text-zinc-200">Admin dashboard</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                  </div>
+                  <DropdownMenuSeparator className="bg-zinc-800/80 mx-0" />
+                  <div className="p-2">
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      className="group rounded-xl px-2 py-2.5 cursor-pointer focus:bg-red-950/40 focus:text-red-300"
+                    >
+                      <MenuIcon icon={LogOut} tone="danger" />
+                      <span className="font-medium text-red-400 group-focus:text-red-300">Log out</span>
+                    </DropdownMenuItem>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
@@ -175,6 +278,13 @@ export function Navbar() {
             </Link>
             {user ? (
               <>
+                <div className="px-4 py-3 mb-1 rounded-xl bg-zinc-900/60 border border-zinc-800 flex items-center gap-3">
+                  <UserAvatar name={user.name} email={user.email} size="sm" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold truncate">{user.name || "User"}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                  </div>
+                </div>
                 <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
                   <div
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
@@ -187,17 +297,16 @@ export function Navbar() {
                   </div>
                 </Link>
                 {user.role === "admin" && (
-                  <Link href="/admin/cars" onClick={() => setMobileOpen(false)}>
-                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-zinc-900 transition-colors">
-                      <Settings className="w-4 h-4" /> Admin Dashboard
+                  <Link href="/admin" onClick={() => setMobileOpen(false)}>
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-zinc-900 transition-colors text-amber-400/90">
+                      <Settings className="w-4 h-4" /> Admin dashboard
                     </div>
                   </Link>
                 )}
                 <div className="pt-2 border-t border-zinc-800 mt-2">
-                  <p className="px-4 py-1 text-xs text-muted-foreground">{user.email}</p>
                   <button
                     onClick={handleLogout}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-destructive/10 text-destructive w-full transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-950/30 text-red-400 w-full transition-colors font-medium"
                   >
                     <LogOut className="w-4 h-4" /> Log out
                   </button>

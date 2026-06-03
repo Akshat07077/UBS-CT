@@ -201,7 +201,7 @@ function DashboardContent() {
             {user ? `Hi, ${user.name || "there"}` : "My account"}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-            Your rentals and cars you&apos;ve listed — in one place.
+            Your rentals and cars you&apos;ve listed, all in one place.
           </p>
         </div>
         <Link href="/list-your-car">
@@ -344,7 +344,7 @@ function DashboardContent() {
                         </Badge>
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {c.location} · {formatINR(c.pricePerDay)}/day
+                        {c.location} · {formatINR(c.pricePerDay)}/day · {formatINR(c.pricePerHour)}/hr
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">

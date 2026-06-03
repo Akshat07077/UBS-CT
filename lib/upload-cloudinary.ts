@@ -64,7 +64,7 @@ function uploadBuffer(
           return;
         }
         if (!result?.secure_url) {
-          reject(new Error("Upload failed — no URL returned from Cloudinary"));
+          reject(new Error("Upload failed. No URL returned from Cloudinary"));
           return;
         }
         resolve({ secure_url: result.secure_url, public_id: result.public_id });

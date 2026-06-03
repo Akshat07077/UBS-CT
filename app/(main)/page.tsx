@@ -6,11 +6,8 @@ import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CarCard, type CarData } from "@/components/car-card";
+import { BookingTimeSelect } from "@/components/booking-time-select";
 import { apiFetch } from "@/lib/api";
-import {
-  normalizePricingUpliftSettings,
-  DEFAULT_PRICING_UPLIFT_SETTINGS,
-} from "@/lib/pricing-uplift-settings";
 import { brand } from "@/lib/brand/config";
 import { SERVICE_CITY } from "@/lib/constants/locations";
 import {
@@ -33,6 +30,8 @@ import {
   earliestReturnTimeSameDay,
   localDateYmd,
   validateBookingSchedule,
+  clampPickupTime,
+  clampReturnTime,
 } from "@/lib/constants/booking-times";
 import { toast } from "@/hooks/use-toast";
 
@@ -85,14 +84,6 @@ export default function Home() {
     queryKey: ["cars", { available: true }],
     queryFn: () => apiFetch<CarData[]>("/api/cars?available=true"),
   });
-  const { data: appConfig } = useQuery({
-    queryKey: ["app-config"],
-    queryFn: () => apiFetch<{ pricingUplift?: unknown }>("/api/config/public"),
-    staleTime: 60_000,
-  });
-  const pricingUplift = normalizePricingUpliftSettings(
-    appConfig?.pricingUplift ?? DEFAULT_PRICING_UPLIFT_SETTINGS
-  );
 
   const featuredCars = useMemo(() => {
     if (!cars?.length) return [];
@@ -120,9 +111,27 @@ export default function Home() {
     returnDate === pickupDate ? earliestReturnTimeSameDay(pickupTime) : undefined;
 
   useEffect(() => {
-    const min = earliestPickupTimeOnDate(pickupDate);
-    if (min && pickupTime < min) setPickupTime(min);
-  }, [pickupDate]);
+    setReturnTime((rt) => clampReturnTime(pickupDate, pickupTime, returnDate, rt));
+  }, [pickupDate, pickupTime, returnDate]);
+
+  const handlePickupDateChange = (next: string) => {
+    setPickupDate(next);
+    setPickupTime((t) => clampPickupTime(next, t));
+    if (returnDate < next) setReturnDate(next);
+  };
+
+  const handleReturnDateChange = (next: string) => {
+    setReturnDate(next);
+  };
+
+  const handlePickupTimeChange = (next: string) => {
+    setPickupTime(next);
+    setReturnTime((rt) => clampReturnTime(pickupDate, next, returnDate, rt));
+  };
+
+  const handleReturnTimeChange = (next: string) => {
+    setReturnTime(next);
+  };
 
   function handleSearch(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -163,13 +172,13 @@ export default function Home() {
               </h2>
               <p className="text-muted-foreground text-base md:text-lg leading-relaxed max-w-xl">
                 Pick your dates, compare verified vehicles with clear INR pricing, and confirm in a few taps.
-                Whether it&apos;s an airport pickup, a weekend drive, or a chauffeur-backed trip — we keep the process
+                Whether it&apos;s an airport pickup, a weekend drive, or a chauffeur-backed trip, we keep the process
                 simple from search to handover.
               </p>
               <ul className="space-y-3 pt-1">
                 {[
                   "Search live inventory from listed cities",
-                  "Transparent pricing — taxes and rental terms upfront",
+                  "Transparent pricing with taxes and rental terms upfront",
                   "Flexible pickup & return windows that fit your schedule",
                 ].map((line) => (
                   <li key={line} className="flex gap-3 text-sm md:text-base text-foreground/90">
@@ -192,7 +201,7 @@ export default function Home() {
               <div className="relative aspect-video rounded-2xl overflow-hidden border border-border bg-muted shadow-xl shadow-black/[0.07] ring-1 ring-black/[0.04]">
                 {HOME_VIDEO_EMBED ? (
                   <iframe
-                    title={`${brand.name} — book your ride`}
+                    title={`${brand.name}: book your ride`}
                     src={withAutoplayEmbedUrl(HOME_VIDEO_EMBED)}
                     className="absolute inset-0 w-full h-full border-0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -208,7 +217,7 @@ export default function Home() {
                       playsInline
                       poster={HERO_VIDEO_POSTER}
                       preload="auto"
-                      aria-label={`Cars on the road — ${brand.name} preview`}
+                      aria-label={`Cars on the road, ${brand.name} preview`}
                     >
                       <source src={HOME_VIDEO_MP4} type="video/mp4" />
                     </video>
@@ -271,7 +280,7 @@ export default function Home() {
                     type="date"
                     value={pickupDate}
                     min={today}
-                    onChange={(e) => setPickupDate(e.target.value)}
+                    onChange={(e) => handlePickupDateChange(e.target.value)}
                     className="h-11 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
                   <Calendar className="datetime-field-icon" aria-hidden />
@@ -283,17 +292,12 @@ export default function Home() {
                 <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 uppercase tracking-wide">
                   <Clock className="w-3.5 h-3.5 text-primary" /> Pickup Time
                 </label>
-                <div className="datetime-field">
-                  <input
-                    type="time"
-                    step={1800}
-                    value={pickupTime}
-                    min={minPickupTime}
-                    onChange={(e) => setPickupTime(e.target.value)}
-                    className="h-11 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                  <Clock className="datetime-field-icon" aria-hidden />
-                </div>
+                <BookingTimeSelect
+                  value={pickupTime}
+                  onChange={handlePickupTimeChange}
+                  minTime={minPickupTime}
+                  className="h-11"
+                />
               </div>
 
               {/* Return Date */}
@@ -306,7 +310,7 @@ export default function Home() {
                     type="date"
                     value={returnDate}
                     min={pickupDate || today}
-                    onChange={(e) => setReturnDate(e.target.value)}
+                    onChange={(e) => handleReturnDateChange(e.target.value)}
                     className="h-11 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
                   <Calendar className="datetime-field-icon" aria-hidden />
@@ -318,17 +322,12 @@ export default function Home() {
                 <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 uppercase tracking-wide">
                   <Clock className="w-3.5 h-3.5 text-primary" /> Return Time
                 </label>
-                <div className="datetime-field">
-                  <input
-                    type="time"
-                    step={1800}
-                    value={returnTime}
-                    min={minReturnTime}
-                    onChange={(e) => setReturnTime(e.target.value)}
-                    className="h-11 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                  <Clock className="datetime-field-icon" aria-hidden />
-                </div>
+                <BookingTimeSelect
+                  value={returnTime}
+                  onChange={handleReturnTimeChange}
+                  minTime={minReturnTime}
+                  className="h-11"
+                />
               </div>
             </div>
 
@@ -351,7 +350,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 text-center">
             {[
-              // { icon: Shield, title: "Fully Insured", desc: "Comprehensive insurance coverage included with every rental." },
+              { icon: CheckCircle2, title: "Verified Listings", desc: "Cars from trusted fleet partners and approved community hosts. Book with confidence." },
               { icon: Headphones, title: "24/7 Support", desc: "Hindi & English support available round the clock. Call us anytime." },
               { icon: Star, title: "Pan-India Listings", desc: "Cities and cars expand as verified vendors list vehicles on the platform." },
             ].map(({ icon: Icon, title, desc }) => (
@@ -404,7 +403,7 @@ export default function Home() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
               {mostBookedCars.map((car) => (
-                <CarCard key={car.id} car={car} pricingUplift={pricingUplift} />
+                <CarCard key={car.id} car={car} />
               ))}
             </div>
           </div>
@@ -417,7 +416,7 @@ export default function Home() {
           <div className="flex justify-between items-end mb-8 md:mb-12">
             <div>
               <h2 className="text-3xl md:text-4xl font-display font-bold mb-2 tracking-tight">Featured Vehicles</h2>
-              <p className="text-muted-foreground text-lg">Curated picks — prioritises high-trust &ldquo;Most Booked&rdquo; listings when available.</p>
+              <p className="text-muted-foreground text-lg">Curated picks that prioritise high-trust &ldquo;Most Booked&rdquo; listings when available.</p>
             </div>
             <Link href="/cars">
               <Button variant="outline" className="hidden sm:flex rounded-xl font-semibold">View All Cars</Button>
@@ -437,7 +436,7 @@ export default function Home() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {featuredCars.map((car) => (
-                <CarCard key={car.id} car={car} pricingUplift={pricingUplift} />
+                <CarCard key={car.id} car={car} />
               ))}
             </div>
           )}
@@ -459,10 +458,10 @@ export default function Home() {
               </h2>
               <div className="space-y-5">
                 {[
-                  { icon: IndianRupee, title: "Transparent INR Pricing", desc: "No hidden charges. What you see is what you pay — all prices in Indian Rupees including GST." },
+                  { icon: IndianRupee, title: "Transparent INR Pricing", desc: "No hidden charges. What you see is what you pay, with all prices in Indian Rupees including GST." },
                   { icon: Shield, title: "Zero Deposit Options", desc: "Book premium cars without a security deposit. We trust our verified members." },
                   { icon: MapPin, title: "Doorstep Delivery", desc: "We deliver the car to your home, hotel, or office across all major Indian cities." },
-                  { icon: Clock, title: "Flexible Rentals", desc: "Hourly, daily, or weekly — rent on your terms with free cancellation up to 24 hours before pickup." },
+                  { icon: Clock, title: "Flexible Rentals", desc: "Hourly, daily, or weekly rentals on your terms, with free cancellation up to 24 hours before pickup." },
                 ].map(({ icon: Icon, title, desc }) => (
                   <div key={title} className="flex gap-4">
                     <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0 mt-0.5">

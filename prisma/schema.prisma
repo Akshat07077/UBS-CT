@@ -145,6 +145,7 @@ model Vehicle {
   year            Int
   slug            String?        @unique
   pricePerDay     Decimal        @map("price_per_day") @db.Decimal(10, 2)
+  pricePerHour    Decimal        @map("price_per_hour") @db.Decimal(10, 2)
   transmission    Transmission
   fuelType        FuelType       @map("fuel_type")
   seats           Int

@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { db, bookingsTable, carsTable, usersTable } from "@/lib/db";
 import { eq } from "drizzle-orm";
-import { sumDailyRates, driverDailyMidpoint } from "@/lib/rental-listing";
+import { computeRentalTotal, driverDailyMidpoint, defaultHourlyFromDaily } from "@/lib/rental-listing";
 import { viewerOwnsCar } from "@/lib/car-response";
 import { DEFAULT_PICKUP_TIME, DEFAULT_RETURN_TIME, isValidBookingTime, validateBookingSchedule } from "@/lib/constants/booking-times";
 import { cancelGuestPendingOverlaps, countWebsiteBookingConflicts } from "@/lib/booking-availability";
@@ -115,7 +115,19 @@ export async function createBooking(input: {
 
   const days = Math.ceil((returnD.getTime() - pickup.getTime()) / (1000 * 60 * 60 * 24));
   const pricingUplift = await getPricingUpliftSettings();
-  const rentalTotal = sumDailyRates(pickupDate, returnDate, Number(car.pricePerDay), pricingUplift);
+  const pricePerHour =
+    car.pricePerHour != null && car.pricePerHour !== ""
+      ? Number(car.pricePerHour)
+      : defaultHourlyFromDaily(Number(car.pricePerDay));
+  const rentalTotal = computeRentalTotal(
+    pickupDate,
+    pickupTime,
+    returnDate,
+    returnTime,
+    Number(car.pricePerDay),
+    pricePerHour,
+    pricingUplift
+  );
   const driverRate = driverDailyMidpoint(car.listing);
   const driverPrice = withDriver && driverRate > 0 ? days * driverRate : 0;
   const paymentSettings = await getBookingPaymentSettings();
@@ -254,7 +266,19 @@ export async function createManualBooking(input: {
 
   const days = Math.ceil((returnD.getTime() - pickup.getTime()) / (1000 * 60 * 60 * 24));
   const pricingUplift = await getPricingUpliftSettings();
-  const rentalTotal = sumDailyRates(pickupDate, returnDate, Number(car.pricePerDay), pricingUplift);
+  const pricePerHour =
+    car.pricePerHour != null && car.pricePerHour !== ""
+      ? Number(car.pricePerHour)
+      : defaultHourlyFromDaily(Number(car.pricePerDay));
+  const rentalTotal = computeRentalTotal(
+    pickupDate,
+    pickupTime,
+    returnDate,
+    returnTime,
+    Number(car.pricePerDay),
+    pricePerHour,
+    pricingUplift
+  );
   const driverRate = driverDailyMidpoint(car.listing);
   const driverPrice = withDriver && driverRate > 0 ? days * driverRate : 0;
   const totalPrice =

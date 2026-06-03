@@ -1,5 +1,5 @@
 import type { CarListingJson } from "@/lib/rental-listing";
-import { DEFAULT_FUEL_POLICY } from "@/lib/rental-listing";
+import { DEFAULT_FUEL_POLICY, defaultHourlyFromDaily } from "@/lib/rental-listing";
 
 function fleetImg(filename: string) {
   return `/imagess/${encodeURIComponent(filename)}`;
@@ -40,6 +40,10 @@ function listing(
 const LOC = "Indore";
 const SUPPLIER = "UBs Car sRental";
 
+function dayHourly(day: number) {
+  return String(defaultHourlyFromDaily(day));
+}
+
 /** Indore fleet — as listed by operations. */
 export const INDIA_FLEET = [
   {
@@ -47,12 +51,13 @@ export const INDIA_FLEET = [
     model: "Sonet",
     year: 2023,
     pricePerDay: "1800",
+    pricePerHour: dayHourly(1800),
     transmission: "manual" as const,
     fuelType: "petrol" as const,
     seats: 5,
     location: LOC,
     description:
-      "Compact SUV with strong features — ideal for city runs, Sarafa nights, and Indore–Ujjain day trips. Petrol, manual.",
+      "Compact SUV with strong features, ideal for city runs, Sarafa nights, and Indore–Ujjain day trips. Petrol, manual.",
     imageUrl: fleetImg("kia carns.jpg"),
     available: true,
     listing: listing({
@@ -72,11 +77,12 @@ export const INDIA_FLEET = [
     model: "Baleno",
     year: 2024,
     pricePerDay: "1500",
+    pricePerHour: dayHourly(1500),
     transmission: "manual" as const,
     fuelType: "petrol" as const,
     seats: 5,
     location: LOC,
-    description: "Premium hatchback — smooth manual drive for daily commutes and family outings in Indore.",
+    description: "Premium hatchback with a smooth manual drive for daily commutes and family outings in Indore.",
     imageUrl: fleetImg("Hyundai_i20_(III,_Facelift)_-_f_11102025.jpg"),
     available: true,
     listing: listing({
@@ -95,12 +101,13 @@ export const INDIA_FLEET = [
     model: "Fronx",
     year: 2026,
     pricePerDay: "1600",
+    pricePerHour: dayHourly(1600),
     transmission: "manual" as const,
     fuelType: "petrol" as const,
     seats: 5,
     location: LOC,
     description:
-      "Crossover with petrol + CNG flexibility — economical for long city days. Manual transmission, 2026 model year.",
+      "Crossover with petrol + CNG flexibility, economical for long city days. Manual transmission, 2026 model year.",
     imageUrl: fleetImg("tata punc.jpg"),
     available: true,
     listing: listing({
@@ -119,12 +126,13 @@ export const INDIA_FLEET = [
     model: "Ertiga",
     year: 2025,
     pricePerDay: "2400",
+    pricePerHour: dayHourly(2400),
     transmission: "manual" as const,
     fuelType: "petrol" as const,
     seats: 7,
     location: LOC,
     description:
-      "7-seater MPV with petrol + CNG — perfect for family trips, airport pickups, and outstation runs from Indore.",
+      "7-seater MPV with petrol + CNG, perfect for family trips, airport pickups, and outstation runs from Indore.",
     imageUrl: fleetImg("ertiga.jpg"),
     available: true,
     listing: listing({
@@ -145,11 +153,12 @@ export const INDIA_FLEET = [
     model: "Glanza",
     year: 2025,
     pricePerDay: "1700",
+    pricePerHour: dayHourly(1700),
     transmission: "manual" as const,
     fuelType: "petrol" as const,
     seats: 5,
     location: LOC,
-    description: "Stylish Toyota hatch — petrol manual, great AC and comfort for Indore city and highway drives.",
+    description: "Stylish Toyota hatch with petrol manual, great AC and comfort for Indore city and highway drives.",
     imageUrl: fleetImg("wagonR.png"),
     available: true,
     listing: listing({
@@ -167,11 +176,12 @@ export const INDIA_FLEET = [
     model: "Dzire",
     year: 2018,
     pricePerDay: "1200",
+    pricePerHour: dayHourly(1200),
     transmission: "manual" as const,
     fuelType: "diesel" as const,
     seats: 5,
     location: LOC,
-    description: "Reliable diesel sedan — excellent mileage for budget-conscious renters and long Indore commutes.",
+    description: "Reliable diesel sedan with excellent mileage for budget-conscious renters and long Indore commutes.",
     imageUrl: fleetImg("2024-maruti-swift-india-launch-9-may-2024-5.jpg"),
     available: true,
     listing: listing({
@@ -189,11 +199,12 @@ export const INDIA_FLEET = [
     model: "Swift",
     year: 2021,
     pricePerDay: "1400",
+    pricePerHour: dayHourly(1400),
     transmission: "automatic" as const,
     fuelType: "diesel" as const,
     seats: 5,
     location: LOC,
-    description: "Maruti Swift diesel with automatic gearbox — easy city driving and strong fuel economy.",
+    description: "Maruti Swift diesel with automatic gearbox, easy city driving and strong fuel economy.",
     imageUrl: fleetImg("2024-maruti-swift-india-launch-9-may-2024-5.jpg"),
     available: true,
     listing: listing({

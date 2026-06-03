@@ -252,7 +252,7 @@ export function AdminInboxPanel({
           { label: "Bookings", value: counts.booking },
         ].map(({ label, value }) => (
           <div key={label} className="bg-card border border-border rounded-xl p-3 sm:p-4 text-center">
-            <p className="text-xl sm:text-2xl font-display font-bold">{isLoading ? "—" : value}</p>
+            <p className="text-xl sm:text-2xl font-display font-bold">{isLoading ? "..." : value}</p>
             <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">{label}</p>
           </div>
         ))}
@@ -382,7 +382,7 @@ export function AdminInboxPanel({
                               #{lead.relatedId} <ExternalLink className="w-3 h-3" />
                             </Link>
                           ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
+                            <span className="text-xs text-muted-foreground">·</span>
                           )}
                         </td>
                       </tr>

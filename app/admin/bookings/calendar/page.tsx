@@ -89,7 +89,7 @@ function ManualBookingForm({ cars, onSuccess }: { cars: CarData[]; onSuccess: ()
       });
       toast({
         title: "Manual booking added",
-        description: "Shown on calendar only — website availability unchanged.",
+        description: "Shown on calendar only. Website availability unchanged.",
       });
       setOpen(false);
       onSuccess();

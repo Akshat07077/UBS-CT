@@ -17,7 +17,7 @@ import { toast } from "@/hooks/use-toast";
 import { formatINR, type CarData } from "@/components/car-card";
 import { buildBookingWhatsAppUrl } from "@/lib/whatsapp";
 import { formatBookingDateTime, validateBookingSchedule } from "@/lib/constants/booking-times";
-import { sumDailyRates, driverDailyMidpoint } from "@/lib/rental-listing";
+import { computeRentalTotal, formatRentalDuration, rentalDurationHours, driverDailyMidpoint } from "@/lib/rental-listing";
 import { normalizePricingUpliftSettings, DEFAULT_PRICING_UPLIFT_SETTINGS } from "@/lib/pricing-uplift-settings";
 import {
   computeBookingPaymentQuote,
@@ -156,10 +156,20 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
   const [collateralType, setCollateralType] = useState<CollateralType | "">("");
   const [collateralDetail, setCollateralDetail] = useState("");
 
+  const rentalHours = rentalDurationHours(pickupDate, pickupTime, returnDate, returnTime);
+  const rentalLabel = formatRentalDuration(rentalHours);
   const days = differenceInDays(new Date(returnDate), new Date(pickupDate));
   const driverPerDay = driverDailyMidpoint(car.listing);
   const showChauffeur = driverPerDay > 0;
-  const carTotal = sumDailyRates(pickupDate, returnDate, car.pricePerDay, pricingUplift);
+  const carTotal = computeRentalTotal(
+    pickupDate,
+    pickupTime,
+    returnDate,
+    returnTime,
+    car.pricePerDay,
+    car.pricePerHour,
+    pricingUplift
+  );
   const driverTotal = withDriver && showChauffeur ? days * driverPerDay : 0;
   const grandTotal = carTotal + driverTotal;
   const paymentQuote = computeBookingPaymentQuote(paymentSettings, car.listing, carTotal, driverTotal);
@@ -277,7 +287,7 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
         router.push(`/booking/confirmation/${booking.id}?${qs.toString()}`);
         toast({
           title: "Booking confirmed (test)",
-          description: "No payment charged — sandbox mode for testing.",
+          description: "No payment charged in sandbox mode for testing.",
         });
         setBusy(null);
         return;
@@ -338,7 +348,7 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Book {carLabel}</DialogTitle>
           <p className="text-sm text-muted-foreground text-left">
-            No account needed — upload ID proofs, share your details, then pay or WhatsApp.
+            No account needed. Upload ID proofs, share your details, then pay or WhatsApp.
           </p>
         </DialogHeader>
 
@@ -354,7 +364,9 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
             </p>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Rental ({days} {days === 1 ? "day" : "days"})</span>
+            <span className="text-muted-foreground">
+              Rental{rentalLabel ? ` (${rentalLabel})` : ""}
+            </span>
             <span className="font-medium">{formatINR(carTotal)}</span>
           </div>
           <BookingPaymentSummary
@@ -454,7 +466,7 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
         {bookingSandbox && (
           <p className="text-xs text-center text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2">
             <FlaskConical className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
-            Test mode — bookings confirm without payment. Set ENABLE_PAYMENTS=true + Stripe keys for live checkout.
+            Test mode: bookings confirm without payment. Set ENABLE_PAYMENTS=true + Stripe keys for live checkout.
           </p>
         )}
 

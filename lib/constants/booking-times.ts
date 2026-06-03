@@ -24,6 +24,62 @@ export function compareTime24(a: string, b: string): number {
   return a.localeCompare(b);
 }
 
+/** Parse HH:mm or HH:mm:ss from native time inputs. */
+export function parseTime24(t: string): { h: number; m: number } | null {
+  const match = t.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (!match) return null;
+  const h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  if (Number.isNaN(h) || Number.isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) return null;
+  return { h, m };
+}
+
+/** Snap any time to nearest 30-minute booking slot (06:00–23:30). */
+export function snapToBookingSlot(t: string, fallback = DEFAULT_PICKUP_TIME): string {
+  const parsed = parseTime24(t);
+  if (!parsed) return fallback;
+  let total = parsed.h * 60 + parsed.m;
+  total = Math.round(total / 30) * 30;
+  total = Math.max(6 * 60, Math.min(23 * 60 + 30, total));
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+/** Slots on or after optional minimum time. */
+export function bookingSlotsFrom(minTime?: string): string[] {
+  if (!minTime) return BOOKING_TIME_SLOTS;
+  return BOOKING_TIME_SLOTS.filter((s) => compareTime24(s, minTime) >= 0);
+}
+
+export function clampPickupTime(dateYmd: string, time: string): string {
+  let t = snapToBookingSlot(time);
+  const min = earliestPickupTimeOnDate(dateYmd);
+  if (min && compareTime24(t, min) < 0) return min;
+  return t;
+}
+
+export function clampReturnTime(
+  pickupYmd: string,
+  pickupT: string,
+  returnYmd: string,
+  returnT: string
+): string {
+  let t = snapToBookingSlot(returnT, DEFAULT_RETURN_TIME);
+  if (returnYmd === pickupYmd) {
+    const min = earliestReturnTimeSameDay(pickupT);
+    if (compareTime24(t, min) < 0) return min;
+  }
+  return t;
+}
+
+/** Pick a value that exists in `slots`, keeping current if valid else first slot. */
+export function ensureTimeInSlots(value: string, slots: string[], fallback: string): string {
+  if (slots.includes(value)) return value;
+  if (slots.length > 0) return slots[0];
+  return fallback;
+}
+
 /** Parse date + time in local timezone. */
 export function parseBookingDateTime(dateYmd: string, time24: string): Date | null {
   const [y, mo, d] = dateYmd.split("-").map(Number);
@@ -127,5 +183,6 @@ export function formatBookingDateTime(dateYmd: string, time24: string): string {
 }
 
 export function isValidBookingTime(t: string): boolean {
-  return /^([01]\d|2[0-3]):[0-5]\d$/.test(t) && BOOKING_TIME_SLOTS.includes(t);
+  if (!parseTime24(t)) return false;
+  return BOOKING_TIME_SLOTS.includes(snapToBookingSlot(t));
 }

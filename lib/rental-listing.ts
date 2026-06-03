@@ -6,6 +6,7 @@ import {
   isPeakSeasonMonth,
   type PricingUpliftSettings,
 } from "@/lib/pricing-uplift-settings";
+import { parseTime24 } from "@/lib/constants/booking-times";
 
 export type CarSegment = "budget" | "mid" | "premium" | "luxury" | "addon";
 
@@ -50,6 +51,93 @@ export function peerHostListingJson(hostDisplayName: string, pricePerDay: number
     securityDepositMax: 8000,
     fuelPolicy: DEFAULT_FUEL_POLICY,
   };
+}
+
+export function defaultHourlyFromDaily(pricePerDay: number): number {
+  return Math.max(1, Math.round(Number(pricePerDay) / 24));
+}
+
+export function parseBookingDateTime(dateYmd: string, time24: string): Date {
+  const parts = dateYmd.split("-").map(Number);
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return new Date(NaN);
+  const parsed = parseTime24(time24);
+  const h = parsed?.h ?? 10;
+  const m = parsed?.m ?? 0;
+  return new Date(parts[0], parts[1] - 1, parts[2], h, m, 0, 0);
+}
+
+/** Total rental length in hours (pickup datetime → return datetime). */
+export function rentalDurationHours(
+  pickupDate: string,
+  pickupTime: string,
+  returnDate: string,
+  returnTime: string
+): number {
+  const start = parseBookingDateTime(pickupDate, pickupTime);
+  const end = parseBookingDateTime(returnDate, returnTime);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+  return (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+}
+
+export function formatRentalDuration(hours: number): string {
+  if (hours <= 0) return "";
+  if (hours < 24) {
+    const h = Math.ceil(hours);
+    return `${h} ${h === 1 ? "hour" : "hours"}`;
+  }
+  const fullDays = Math.floor(hours / 24);
+  const remainder = hours - fullDays * 24;
+  if (remainder === 0) {
+    return `${fullDays} ${fullDays === 1 ? "day" : "days"}`;
+  }
+  const extra = Math.ceil(remainder);
+  return `${fullDays} ${fullDays === 1 ? "day" : "days"} + ${extra} ${extra === 1 ? "hour" : "hours"}`;
+}
+
+/**
+ * Rental pricing:
+ * - under 24h → hourly rate × billable hours
+ * - exactly 24h → one daily rate
+ * - over 24h → full 24h blocks at daily rate + remainder at hourly rate
+ */
+export function computeRentalTotal(
+  pickupDate: string,
+  pickupTime: string,
+  returnDate: string,
+  returnTime: string,
+  pricePerDay: number,
+  pricePerHour: number,
+  settings: PricingUpliftSettings = DEFAULT_PRICING_UPLIFT_SETTINGS
+): number {
+  const hours = rentalDurationHours(pickupDate, pickupTime, returnDate, returnTime);
+  if (hours <= 0) return 0;
+
+  const pickupStart = parseBookingDateTime(pickupDate, pickupTime);
+  const dayRate = Number(pricePerDay);
+  const hourRate = Number(pricePerHour);
+
+  if (hours < 24) {
+    const billableHours = Math.max(1, Math.ceil(hours));
+    const mul = priceMultiplierForDate(pickupStart, settings);
+    return Math.round(billableHours * hourRate * mul);
+  }
+
+  const fullDays = Math.floor(hours / 24);
+  const remainderHours = hours - fullDays * 24;
+
+  let total = 0;
+  for (let i = 0; i < fullDays; i++) {
+    const blockStart = new Date(pickupStart.getTime() + i * 24 * 60 * 60 * 1000);
+    total += dayRate * priceMultiplierForDate(blockStart, settings);
+  }
+
+  if (remainderHours > 0) {
+    const remainderStart = new Date(pickupStart.getTime() + fullDays * 24 * 60 * 60 * 1000);
+    const billableExtra = Math.ceil(remainderHours);
+    total += billableExtra * hourRate * priceMultiplierForDate(remainderStart, settings);
+  }
+
+  return Math.round(total);
 }
 
 export function isWeekendIndia(d: Date): boolean {

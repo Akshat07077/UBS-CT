@@ -51,7 +51,7 @@ export function CarImageSlider({ images, alt, className, heightClass = "h-[40vh]
           className={cn("absolute inset-0 transition-opacity duration-500", i === index ? "opacity-100 z-[1]" : "opacity-0 z-0 pointer-events-none")}
           aria-hidden={i !== index}
         >
-          <Image src={src} alt={`${alt} — photo ${i + 1}`} fill className="object-cover" sizes="100vw" priority={i === 0} />
+          <Image src={src} alt={`${alt}, photo ${i + 1}`} fill className="object-cover" sizes="100vw" priority={i === 0} />
         </div>
       ))}
       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent z-[2] pointer-events-none" />

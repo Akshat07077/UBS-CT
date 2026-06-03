@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       metadata: { source: "contact_page" },
     });
 
-    return NextResponse.json({ ok: true, message: "Thanks — we will get back to you shortly." });
+    return NextResponse.json({ ok: true, message: "Thanks. We will get back to you shortly." });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

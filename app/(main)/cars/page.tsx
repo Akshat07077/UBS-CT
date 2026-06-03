@@ -18,10 +18,6 @@ import {
   hasBookingSearch,
   parseBookingSearchParams,
 } from "@/lib/booking-search-params";
-import {
-  normalizePricingUpliftSettings,
-  DEFAULT_PRICING_UPLIFT_SETTINGS,
-} from "@/lib/pricing-uplift-settings";
 
 interface Filters {
   location?: string;
@@ -173,14 +169,6 @@ function CarsContent() {
     queryKey: ["cars", filters],
     queryFn: () => apiFetch<CarData[]>(`/api/cars${qs ? `?${qs}` : ""}`),
   });
-  const { data: appConfig } = useQuery({
-    queryKey: ["app-config"],
-    queryFn: () => apiFetch<{ pricingUplift?: unknown }>("/api/config/public"),
-    staleTime: 60_000,
-  });
-  const pricingUplift = normalizePricingUpliftSettings(
-    appConfig?.pricingUplift ?? DEFAULT_PRICING_UPLIFT_SETTINGS
-  );
 
   const cityCount = (city: string) =>
     allCars?.filter((c) => c.location?.toLowerCase() === city.toLowerCase()).length ?? 0;
@@ -252,7 +240,7 @@ function CarsContent() {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            No city filters yet — cities will appear automatically when vendors list cars.
+            No city filters yet. Cities will appear automatically when vendors list cars.
           </p>
         )}
         {hasBookingSearch(bookingSearch) && bookingSearch.pickup && bookingSearch.return && (
@@ -338,7 +326,7 @@ function CarsContent() {
           ) : cars && cars.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
               {cars.map((car) => (
-                <CarCard key={car.id} car={car} bookingSearch={bookingSearch} pricingUplift={pricingUplift} />
+                <CarCard key={car.id} car={car} bookingSearch={bookingSearch} />
               ))}
             </div>
           ) : (

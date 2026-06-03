@@ -33,8 +33,8 @@ const OFFICES = [
 const FAQS = [
   { q: "What documents do I need to rent a car?", a: "A valid driving licence, Aadhaar card or passport, and a selfie for verification. That's it." },
   { q: "Is there a security deposit?", a: "No security deposit for verified members. First-time renters may need a refundable ₹2,000 hold." },
-  { q: "Can I cancel my booking?", a: "Yes — free cancellation up to 24 hours before pickup. After that, a 10% fee applies." },
-  { q: "Do you offer doorstep delivery?", a: "Yes — delivery depends on the listed vendor city and service coverage for that booking." },
+  { q: "Can I cancel my booking?", a: "Yes. Free cancellation up to 24 hours before pickup. After that, a 10% fee applies." },
+  { q: "Do you offer doorstep delivery?", a: "Yes. Delivery depends on the listed vendor city and service coverage for that booking." },
   { q: "Is fuel included in the price?", a: "No, fuel is not included. The car is delivered with a full tank and should be returned full." },
 ];
 
@@ -76,7 +76,7 @@ export default function ContactPage() {
         </span>
         <h1 className="text-4xl md:text-5xl font-display font-extrabold tracking-tight mb-4">Contact Us</h1>
         <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-          Questions about a booking, need help choosing a car, or just want to say hi — reach out anytime.
+          Questions about a booking, need help choosing a car, or just want to say hi? Reach out anytime.
         </p>
       </div>
 

@@ -20,6 +20,8 @@ const statements = [
     updated_at timestamp NOT NULL DEFAULT now()
   )`,
   `ALTER TABLE cars DROP COLUMN IF EXISTS vehicle_type`,
+  `ALTER TABLE cars ADD COLUMN IF NOT EXISTS price_per_hour numeric(10, 2)`,
+  `UPDATE cars SET price_per_hour = GREATEST(1, ROUND(price_per_day / 24)) WHERE price_per_hour IS NULL`,
 ];
 
 async function main() {

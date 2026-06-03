@@ -1,5 +1,5 @@
 import type { Car, User } from "@/lib/db";
-import { peerHostListingJson, type CarListingJson } from "@/lib/rental-listing";
+import { peerHostListingJson, defaultHourlyFromDaily, type CarListingJson } from "@/lib/rental-listing";
 
 /** DB-only approval often leaves old promo/note in `listing` JSON; normalize for clients when row is approved. */
 function resolveListingForClient(car: Car): CarListingJson | null {
@@ -40,6 +40,10 @@ function baseFields(car: Car, galleryUrls?: string[] | null) {
     model: car.model,
     year: car.year,
     pricePerDay: Number(car.pricePerDay),
+    pricePerHour:
+      car.pricePerHour != null && car.pricePerHour !== ""
+        ? Number(car.pricePerHour)
+        : defaultHourlyFromDaily(Number(car.pricePerDay)),
     transmission: car.transmission,
     fuelType: car.fuelType,
     seats: car.seats,

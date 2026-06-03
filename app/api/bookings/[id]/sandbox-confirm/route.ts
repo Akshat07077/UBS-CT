@@ -44,7 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({
       ...confirmed,
       sandbox: true,
-      message: "Booking confirmed (test mode — no payment charged).",
+      message: "Booking confirmed (test mode, no payment charged).",
     });
   } catch (e) {
     console.error(e);

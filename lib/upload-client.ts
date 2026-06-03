@@ -17,17 +17,17 @@ async function parseUploadResponse(res: Response): Promise<{
     return text ? JSON.parse(text) : {};
   } catch {
     if (res.status === 401) {
-      throw new Error("Session expired — open the site in your phone browser, log in again, then retry.");
+      throw new Error("Session expired. Open the site in your phone browser, log in again, then retry.");
     }
     if (res.status === 413) {
-      throw new Error("Photo too large for server. We tried to compress it — pick a smaller image or use Wi‑Fi and retry.");
+      throw new Error("Photo too large for server. We tried to compress it. Pick a smaller image or use Wi‑Fi and retry.");
     }
     if (res.status === 403) {
       throw new Error("Upload not allowed. Please log in as admin on this device.");
     }
     if (res.status >= 500) {
       throw new Error(
-        "Server error — add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET on Vercel (remove placeholder CLOUDINARY_URL), then redeploy."
+        "Server error. Add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET on Vercel (remove placeholder CLOUDINARY_URL), then redeploy."
       );
     }
     if (text.includes("<!DOCTYPE") || text.includes("<html")) {

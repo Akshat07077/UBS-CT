@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-display" });
 export const metadata: Metadata = {
   title: "UBs Car Rental | Drive the Difference",
   description:
-    "Premium car rental in Indore. Browse our fleet, book online or WhatsApp. Scheme 134, Nipania — rindorecar@gmail.com",
+    "Premium car rental in Indore. Browse our fleet, book online or WhatsApp. Scheme 134, Nipania. rindorecar@gmail.com",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
