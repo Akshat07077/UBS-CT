@@ -152,7 +152,7 @@ export default function AdminOverviewPage() {
               Open inbox
             </Link>
           </div>
-          <div className="divide-y divide-border/50 max-h-[320px] overflow-y-auto">
+          <div className="divide-y divide-border/50 max-h-[320px] overflow-y-auto luxury-scroll">
             {lLoading ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="px-4 sm:px-6 py-4">

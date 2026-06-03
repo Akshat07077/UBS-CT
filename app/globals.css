@@ -28,6 +28,9 @@
     --input: 240 4% 16%;
     --ring: 46 65% 52%;
     --radius: 0.75rem;
+    --scrollbar-size: 10px;
+    --scrollbar-track: 240 4% 11%;
+    --scrollbar-thumb: 46 65% 52%;
   }
 
   .dark {
@@ -59,6 +62,71 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+  }
+
+  /* Site-wide scrollbars (vertical + horizontal) */
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  html,
+  body,
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--scrollbar-thumb) / 0.55) hsl(var(--scrollbar-track) / 0.85);
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  *::-webkit-scrollbar {
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+  }
+
+  html::-webkit-scrollbar-track,
+  body::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-track {
+    background: hsl(var(--scrollbar-track) / 0.65);
+    border-radius: 999px;
+    margin: 3px;
+  }
+
+  html::-webkit-scrollbar-thumb,
+  body::-webkit-scrollbar-thumb,
+  *::-webkit-scrollbar-thumb {
+    background: linear-gradient(
+      135deg,
+      hsl(48 96% 58% / 0.72) 0%,
+      hsl(var(--scrollbar-thumb) / 0.62) 48%,
+      hsl(32 52% 38% / 0.58) 100%
+    );
+    border-radius: 999px;
+    border: 2px solid hsl(var(--background));
+    background-clip: padding-box;
+    min-height: 2.5rem;
+    min-width: 2.5rem;
+  }
+
+  html::-webkit-scrollbar-thumb:hover,
+  body::-webkit-scrollbar-thumb:hover,
+  *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(
+      135deg,
+      hsl(48 100% 68% / 0.92) 0%,
+      hsl(var(--scrollbar-thumb) / 0.82) 100%
+    );
+  }
+
+  html::-webkit-scrollbar-thumb:active,
+  body::-webkit-scrollbar-thumb:active,
+  *::-webkit-scrollbar-thumb:active {
+    background: hsl(var(--scrollbar-thumb) / 0.95);
+  }
+
+  html::-webkit-scrollbar-corner,
+  body::-webkit-scrollbar-corner,
+  *::-webkit-scrollbar-corner {
+    background: hsl(var(--background));
   }
 
   /* Native picker: dark popup + visible date/time text on mobile */
@@ -155,24 +223,18 @@
     color: transparent;
   }
 
-  /* Admin tables — visible horizontal scrollbar */
-  .admin-table-scroll {
+  /* Thinner scrollbars for dense panels (admin sidebar, tables, dialogs) */
+  .luxury-scroll {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--primary) / 0.55) hsl(var(--muted));
+    scrollbar-color: hsl(var(--scrollbar-thumb) / 0.55) hsl(var(--scrollbar-track) / 0.85);
   }
-  .admin-table-scroll::-webkit-scrollbar {
-    height: 10px;
+
+  .luxury-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
   }
-  .admin-table-scroll::-webkit-scrollbar-track {
-    background: hsl(var(--muted));
-    border-radius: 999px;
-  }
-  .admin-table-scroll::-webkit-scrollbar-thumb {
-    background: hsl(var(--primary) / 0.55);
-    border-radius: 999px;
-    border: 2px solid hsl(var(--muted));
-  }
-  .admin-table-scroll::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--primary) / 0.75);
+
+  .admin-table-scroll {
+    @apply luxury-scroll;
   }
 }

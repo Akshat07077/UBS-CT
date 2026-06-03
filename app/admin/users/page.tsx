@@ -34,7 +34,7 @@ export default function AdminUsersPage() {
       </div>
 
       <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto luxury-scroll">
           <table className="w-full min-w-[520px] text-sm text-left">
             <thead className="bg-muted/50 text-muted-foreground font-medium uppercase tracking-wider text-xs">
               <tr>

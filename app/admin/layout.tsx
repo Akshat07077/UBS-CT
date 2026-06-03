@@ -86,7 +86,7 @@ function SidebarPanel({
         )}
       </div>
 
-      <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+      <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto luxury-scroll">
         {NAV.map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? pathname === href : pathname.startsWith(href);
           return (
@@ -233,7 +233,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       <main className="w-full min-w-0 lg:ml-64">
-        <div className="p-4 sm:p-6 lg:p-8 w-full min-w-0 max-w-full box-border overflow-x-auto overflow-y-visible">
+        <div className="p-4 sm:p-6 lg:p-8 w-full min-w-0 max-w-full box-border overflow-x-auto overflow-y-visible luxury-scroll">
           {children}
         </div>
       </main>
