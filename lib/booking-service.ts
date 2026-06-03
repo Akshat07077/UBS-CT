@@ -3,7 +3,7 @@ import { db, bookingsTable, carsTable, usersTable } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { sumDailyRates, driverDailyMidpoint } from "@/lib/rental-listing";
 import { viewerOwnsCar } from "@/lib/car-response";
-import { DEFAULT_PICKUP_TIME, DEFAULT_RETURN_TIME, isValidBookingTime } from "@/lib/constants/booking-times";
+import { DEFAULT_PICKUP_TIME, DEFAULT_RETURN_TIME, isValidBookingTime, validateBookingSchedule } from "@/lib/constants/booking-times";
 import { cancelGuestPendingOverlaps, countWebsiteBookingConflicts } from "@/lib/booking-availability";
 import type { User } from "@/lib/db/schema";
 import { createLead } from "@/lib/leads";
@@ -86,13 +86,12 @@ export async function createBooking(input: {
     if (phone.length < 10) throw new BookingError("Enter a valid 10-digit phone number", 400);
   }
 
-  const pickup = new Date(pickupDate);
-  const returnD = new Date(returnDate);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const scheduleError = validateBookingSchedule(pickupDate, pickupTime, returnDate, returnTime);
+  if (scheduleError) throw new BookingError(scheduleError, 400);
 
-  if (pickup < today) throw new BookingError("Pickup date cannot be in the past", 400);
-  if (returnD <= pickup) throw new BookingError("Return date must be after pickup date", 400);
+  const pickup = new Date(pickupDate + "T12:00:00");
+  const returnD = new Date(returnDate + "T12:00:00");
+  if (returnD < pickup) throw new BookingError("Return date must be on or after pickup date", 400);
 
   const [car] = await db.select().from(carsTable).where(eq(carsTable.id, carId)).limit(1);
   if (!car) throw new BookingError("Car not found", 404);

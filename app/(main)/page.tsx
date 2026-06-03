@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CarCard, type CarData } from "@/components/car-card";
@@ -23,6 +23,14 @@ import {
   CheckCircle2,
   Calendar,
 } from "lucide-react";
+import {
+  defaultPickupTimeForDate,
+  earliestPickupTimeOnDate,
+  earliestReturnTimeSameDay,
+  localDateYmd,
+  validateBookingSchedule,
+} from "@/lib/constants/booking-times";
+import { toast } from "@/hooks/use-toast";
 
 const HOME_VIDEO_EMBED =
   typeof process.env.NEXT_PUBLIC_HOME_VIDEO_EMBED === "string"
@@ -87,16 +95,30 @@ export default function Home() {
   );
 
   // Search widget state
-  const today = new Date().toISOString().split("T")[0];
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+  const today = localDateYmd();
+  const tomorrow = localDateYmd(new Date(Date.now() + 86400000));
   const [location, setLocation] = useState("");
   const [pickupDate, setPickupDate] = useState(today);
-  const [pickupTime, setPickupTime] = useState("10:00");
+  const [pickupTime, setPickupTime] = useState(() => defaultPickupTimeForDate(today));
   const [returnDate, setReturnDate] = useState(tomorrow);
   const [returnTime, setReturnTime] = useState("10:00");
 
+  const minPickupTime = earliestPickupTimeOnDate(pickupDate);
+  const minReturnTime =
+    returnDate === pickupDate ? earliestReturnTimeSameDay(pickupTime) : undefined;
+
+  useEffect(() => {
+    const min = earliestPickupTimeOnDate(pickupDate);
+    if (min && pickupTime < min) setPickupTime(min);
+  }, [pickupDate]);
+
   function handleSearch(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const scheduleError = validateBookingSchedule(pickupDate, pickupTime, returnDate, returnTime);
+    if (scheduleError) {
+      toast({ title: "Invalid schedule", description: scheduleError, variant: "destructive" });
+      return;
+    }
     const params = new URLSearchParams();
     if (location) params.set("location", location);
     if (pickupDate) params.set("pickup", pickupDate);
@@ -254,6 +276,7 @@ export default function Home() {
                     type="time"
                     step={1800}
                     value={pickupTime}
+                    min={minPickupTime}
                     onChange={(e) => setPickupTime(e.target.value)}
                     className="h-11 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
@@ -288,6 +311,7 @@ export default function Home() {
                     type="time"
                     step={1800}
                     value={returnTime}
+                    min={minReturnTime}
                     onChange={(e) => setReturnTime(e.target.value)}
                     className="h-11 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
@@ -315,7 +339,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 text-center">
             {[
-              { icon: Shield, title: "Fully Insured", desc: "Comprehensive insurance coverage included with every rental." },
+              // { icon: Shield, title: "Fully Insured", desc: "Comprehensive insurance coverage included with every rental." },
               { icon: Headphones, title: "24/7 Support", desc: "Hindi & English support available round the clock. Call us anytime." },
               { icon: Star, title: "Pan-India Listings", desc: "Cities and cars expand as verified vendors list vehicles on the platform." },
             ].map(({ icon: Icon, title, desc }) => (
@@ -337,7 +361,7 @@ export default function Home() {
           <div className="text-center mb-10">
             <h2 className="text-3xl md:text-4xl font-display font-bold mb-3 tracking-tight">Serving {SERVICE_CITY}</h2>
             <p className="text-muted-foreground text-lg">
-              No preset demo cities. New cities appear automatically when vendors add cars there.
+              New cities appear automatically when vendors add cars there.
             </p>
           </div>
           <div className="flex justify-center">

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Users, Fuel, Settings2, MapPin, Sparkles } from "lucide-react";
 import type { CarListingJson } from "@/lib/rental-listing";
 import { pricingContextLabel, scaledDayBand } from "@/lib/rental-listing";
+import { carDetailHref, type BookingSearchParams } from "@/lib/booking-search-params";
 
 export type { CarListingJson };
 
@@ -43,14 +44,22 @@ export function formatINR(amount: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
 }
 
-export function CarCard({ car }: { car: CarData }) {
+export function CarCard({
+  car,
+  bookingSearch,
+}: {
+  car: CarData;
+  /** Pickup/return (and optional city) from homepage or browse search — forwarded to detail page. */
+  bookingSearch?: BookingSearchParams;
+}) {
   const L = car.listing;
   const today = new Date();
   const todayBand = L ? scaledDayBand(car.pricePerDay, L.pricePerDayMax, today) : null;
+  const href = carDetailHref(car.id, bookingSearch);
 
   return (
     <Link
-      href={`/cars/${car.id}`}
+      href={href}
       className={cn(
         "group flex flex-col overflow-hidden rounded-2xl border border-border/50 bg-card shadow-lg shadow-black/5",
         "hover:shadow-xl hover:border-border transition-all duration-300 hover:-translate-y-1",

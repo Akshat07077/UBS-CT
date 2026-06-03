@@ -21,6 +21,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "pickup_date and return_date required" }, { status: 400 });
     }
 
+    if (return_date < pickup_date) {
+      return NextResponse.json({ available: false, conflictingBookings: 0, reason: "invalid_range" });
+    }
+
     const conflictCount = await countWebsiteBookingConflicts(db, carId, pickup_date, return_date);
 
     return NextResponse.json({

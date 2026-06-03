@@ -26,27 +26,62 @@ import { CarImageSlider } from "@/components/car-image-slider";
 import {
   DEFAULT_PICKUP_TIME,
   DEFAULT_RETURN_TIME,
+  compareTime24,
+  defaultPickupTimeForDate,
+  earliestPickupTimeOnDate,
+  earliestReturnTimeSameDay,
   formatBookingDateTime,
   formatDateDdMmYyyy,
   formatTime12h,
+  localDateYmd,
+  validateBookingSchedule,
+  isValidBookingTime,
+  BOOKING_TIME_SLOTS,
 } from "@/lib/constants/booking-times";
+import { parseBookingSearchParams } from "@/lib/booking-search-params";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
-/** Local calendar date YYYY-MM-DD (avoids UTC off-by-one in India). */
-function localYmd(d = new Date()) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+function parseLocalYmd(ymd: string): Date {
+  const [y, mo, d] = ymd.split("-").map(Number);
+  return new Date(y, mo - 1, d);
+}
+
+function rentalDayCount(pickupYmd: string, returnYmd: string): number {
+  if (!pickupYmd || !returnYmd || returnYmd < pickupYmd) return 0;
+  return differenceInDays(parseLocalYmd(returnYmd), parseLocalYmd(pickupYmd));
+}
+
+function clampPickupTime(dateYmd: string, time: string): string {
+  const min = earliestPickupTimeOnDate(dateYmd);
+  if (min && compareTime24(time, min) < 0) return min;
+  if (!isValidBookingTime(time)) return BOOKING_TIME_SLOTS[0];
+  return time;
+}
+
+function clampReturnTime(
+  pickupYmd: string,
+  pickupT: string,
+  returnYmd: string,
+  returnT: string
+): string {
+  if (returnYmd !== pickupYmd) {
+    if (!isValidBookingTime(returnT)) return DEFAULT_RETURN_TIME;
+    return returnT;
+  }
+  const min = earliestReturnTimeSameDay(pickupT);
+  if (compareTime24(returnT, min) < 0) return min;
+  if (!isValidBookingTime(returnT)) return min;
+  return returnT;
 }
 
 function defaultPickupYmd() {
-  return localYmd();
+  return localDateYmd();
 }
 
 function defaultReturnYmd() {
   const d = new Date();
   d.setDate(d.getDate() + 1);
-  return localYmd(d);
+  return localDateYmd(d);
 }
 
 const INCLUSIONS = [
@@ -80,9 +115,18 @@ function CarDetailPage() {
   const [returnDate, setReturnDate] = useState(
     () => searchParams.get("return") || defaultReturnYmd()
   );
-  const [pickupTime, setPickupTime] = useState(searchParams.get("pickupTime") ?? DEFAULT_PICKUP_TIME);
+  const [pickupTime, setPickupTime] = useState(
+    () => searchParams.get("pickupTime") ?? defaultPickupTimeForDate(searchParams.get("pickup") || defaultPickupYmd())
+  );
   const [returnTime, setReturnTime] = useState(searchParams.get("returnTime") ?? DEFAULT_RETURN_TIME);
   const [bookingOpen, setBookingOpen] = useState(false);
+
+  const debouncedPickup = useDebouncedValue(pickupDate, 400);
+  const debouncedReturn = useDebouncedValue(returnDate, 400);
+  const datesReadyForAvailability =
+    !!debouncedPickup &&
+    !!debouncedReturn &&
+    debouncedReturn >= debouncedPickup;
 
   useEffect(() => {
     if (searchParams.get("book") === "1" && pickupDate && returnDate) {
@@ -91,22 +135,65 @@ function CarDetailPage() {
   }, [searchParams, pickupDate, returnDate]);
 
   useEffect(() => {
-    const pt = searchParams.get("pickupTime");
-    const rt = searchParams.get("returnTime");
-    if (pt) setPickupTime(pt);
-    if (rt) setReturnTime(rt);
+    const booking = parseBookingSearchParams(searchParams);
+    if (booking.pickup) {
+      setPickupDate(booking.pickup);
+      setPickupTime(
+        booking.pickupTime
+          ? clampPickupTime(booking.pickup, booking.pickupTime)
+          : defaultPickupTimeForDate(booking.pickup)
+      );
+    }
+    if (booking.return) {
+      setReturnDate(booking.return);
+      if (booking.returnTime) {
+        setReturnTime(
+          clampReturnTime(
+            booking.pickup ?? pickupDate,
+            booking.pickupTime ?? pickupTime,
+            booking.return,
+            booking.returnTime
+          )
+        );
+      }
+    }
   }, [searchParams]);
+
+  const handlePickupDateChange = (next: string) => {
+    setPickupDate(next);
+    setPickupTime((t) => clampPickupTime(next, t));
+    setReturnDate((r) => (r < next ? next : r));
+  };
+
+  const handleReturnDateChange = (next: string) => {
+    setReturnDate(next);
+    setReturnTime((t) => clampReturnTime(pickupDate, pickupTime, next, t));
+  };
+
+  const handlePickupTimeChange = (next: string) => {
+    const t = clampPickupTime(pickupDate, next);
+    setPickupTime(t);
+    setReturnTime((rt) => clampReturnTime(pickupDate, t, returnDate, rt));
+  };
+
+  const handleReturnTimeChange = (next: string) => {
+    setReturnTime(clampReturnTime(pickupDate, pickupTime, returnDate, next));
+  };
 
   const {
     data: availability,
-    isLoading: isChecking,
+    isFetching: isCheckingAvailability,
     isError: availabilityError,
     refetch: refetchAvailability,
   } = useQuery<{ available: boolean }>({
-    queryKey: ["availability", id, pickupDate, returnDate],
-    queryFn: () => apiFetch<{ available: boolean }>(`/api/cars/${id}/availability?pickup_date=${pickupDate}&return_date=${returnDate}`),
-    enabled: !!pickupDate && !!returnDate,
+    queryKey: ["availability", id, debouncedPickup, debouncedReturn],
+    queryFn: () =>
+      apiFetch<{ available: boolean }>(
+        `/api/cars/${id}/availability?pickup_date=${debouncedPickup}&return_date=${debouncedReturn}`
+      ),
+    enabled: datesReadyForAvailability,
     retry: 1,
+    staleTime: 0,
   });
 
   if (isLoading) return (
@@ -123,19 +210,35 @@ function CarDetailPage() {
     </div>
   );
 
-  const today = localYmd();
-  const days = pickupDate && returnDate ? differenceInDays(new Date(returnDate), new Date(pickupDate)) : 0;
-  const invalidDates = !!pickupDate && !!returnDate && days <= 0;
+  const today = localDateYmd();
+  const minPickupTime = earliestPickupTimeOnDate(pickupDate);
+  const minReturnTime =
+    returnDate === pickupDate ? earliestReturnTimeSameDay(pickupTime) : undefined;
+  const days = rentalDayCount(pickupDate, returnDate);
+  const scheduleError =
+    pickupDate && returnDate && pickupTime && returnTime
+      ? validateBookingSchedule(pickupDate, pickupTime, returnDate, returnTime)
+      : null;
+  const datesInvalid = !!pickupDate && !!returnDate && returnDate < pickupDate;
+  const showAvailabilityCheck =
+    !!pickupDate && !!returnDate && !scheduleError && !datesInvalid;
+  const availabilityPending =
+    showAvailabilityCheck &&
+    (pickupDate !== debouncedPickup ||
+      returnDate !== debouncedReturn ||
+      isCheckingAvailability);
+  const availabilitySettled =
+    showAvailabilityCheck && !availabilityPending && availability !== undefined;
+  const isAvailable = availabilitySettled && availability.available === true;
   const L = car.listing;
-  const rentalTotal = pickupDate && returnDate && days > 0 ? sumDailyRates(pickupDate, returnDate, car.pricePerDay) : 0;
+  const rentalTotal =
+    pickupDate && returnDate && days > 0 ? sumDailyRates(pickupDate, returnDate, car.pricePerDay) : 0;
   const driverTotal = 0;
   const total = rentalTotal + driverTotal;
   const paymentQuote =
     pickupDate && returnDate && days > 0
       ? computeBookingPaymentQuote(paymentSettings, car.listing, rentalTotal, driverTotal)
       : null;
-  const isAvailable =
-    availabilityError || invalidDates ? undefined : isChecking ? undefined : availability?.available === true;
   const now = new Date();
   const todayBand = L ? scaledDayBand(car.pricePerDay, L.pricePerDayMax, now) : null;
   const isOwnListing = car.isViewerOwner === true;
@@ -147,8 +250,20 @@ function CarDetailPage() {
       toast({ title: "Dates Required", description: "Please select both pickup and return dates.", variant: "destructive" });
       return;
     }
-    if (days <= 0) {
-      toast({ title: "Invalid Dates", description: "Return date must be after pickup date.", variant: "destructive" });
+    if (scheduleError) {
+      toast({ title: "Invalid schedule", description: scheduleError, variant: "destructive" });
+      return;
+    }
+    if (datesInvalid) {
+      toast({ title: "Invalid Dates", description: "Return date cannot be before pickup date.", variant: "destructive" });
+      return;
+    }
+    if (!availabilitySettled || !isAvailable) {
+      toast({
+        title: "Not available",
+        description: "This car is not available for the selected dates.",
+        variant: "destructive",
+      });
       return;
     }
     if (isOwnListing) {
@@ -197,7 +312,7 @@ function CarDetailPage() {
               {car.isCommunityListing && (
                 <div className="rounded-xl border border-violet-500/40 bg-violet-950/40 text-violet-50 px-4 py-3 text-sm backdrop-blur-md mb-4">
                   <span className="font-semibold">Community host listing</span>
-                  <span className="text-violet-200"> · Same booking flow as fleet cars; host payouts are not wired in this demo.</span>
+                  <span className="text-violet-200"> · Same booking flow as fleet cars.</span>
                 </div>
               )}
 
@@ -261,7 +376,7 @@ function CarDetailPage() {
                     <Input
                       type="date"
                       value={pickupDate}
-                      onChange={(e) => setPickupDate(e.target.value)}
+                      onChange={(e) => handlePickupDateChange(e.target.value)}
                       min={today}
                       className="h-12 rounded-xl text-foreground"
                     />
@@ -279,7 +394,8 @@ function CarDetailPage() {
                       type="time"
                       step={1800}
                       value={pickupTime}
-                      onChange={(e) => setPickupTime(e.target.value)}
+                      onChange={(e) => handlePickupTimeChange(e.target.value)}
+                      min={minPickupTime}
                       className="h-12 rounded-xl"
                     />
                     <p className="text-[11px] text-muted-foreground">Selected: {formatTime12h(pickupTime)}</p>
@@ -289,7 +405,7 @@ function CarDetailPage() {
                     <Input
                       type="date"
                       value={returnDate}
-                      onChange={(e) => setReturnDate(e.target.value)}
+                      onChange={(e) => handleReturnDateChange(e.target.value)}
                       min={pickupDate || today}
                       className="h-12 rounded-xl text-foreground"
                     />
@@ -307,7 +423,8 @@ function CarDetailPage() {
                       type="time"
                       step={1800}
                       value={returnTime}
-                      onChange={(e) => setReturnTime(e.target.value)}
+                      onChange={(e) => handleReturnTimeChange(e.target.value)}
+                      min={minReturnTime}
                       className="h-12 rounded-xl"
                     />
                     <p className="text-[11px] text-muted-foreground">Selected: {formatTime12h(returnTime)}</p>
@@ -345,11 +462,15 @@ function CarDetailPage() {
                         <span className="font-bold text-xl text-primary">{formatINR(total)}</span>
                       </div>
                     )}
-                    {invalidDates ? (
+                    {scheduleError ? (
                       <p className="text-xs text-amber-600 mt-3 flex items-center justify-center gap-1.5 font-medium">
-                        <AlertCircle className="w-3.5 h-3.5" /> Return date must be after pickup
+                        <AlertCircle className="w-3.5 h-3.5" /> {scheduleError}
                       </p>
-                    ) : isChecking ? (
+                    ) : datesInvalid ? (
+                      <p className="text-xs text-amber-600 mt-3 flex items-center justify-center gap-1.5 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5" /> Return date cannot be before pickup
+                      </p>
+                    ) : availabilityPending ? (
                       <p className="text-xs text-muted-foreground mt-3 text-center">Checking availability...</p>
                     ) : availabilityError ? (
                       <p className="text-xs text-amber-600 mt-3 text-center">
@@ -360,9 +481,9 @@ function CarDetailPage() {
                       </p>
                     ) : isAvailable ? (
                       <p className="text-xs text-green-600 mt-3 flex items-center justify-center gap-1.5 font-medium"><CheckCircle2 className="w-3.5 h-3.5" /> Available for these dates</p>
-                    ) : (
+                    ) : showAvailabilityCheck ? (
                       <p className="text-xs text-destructive mt-3 flex items-center justify-center gap-1.5 font-medium"><AlertCircle className="w-3.5 h-3.5" /> Not available for selected dates</p>
-                    )}
+                    ) : null}
                   </div>
                 )}
 
@@ -378,10 +499,12 @@ function CarDetailPage() {
                   disabled={
                     !car.available ||
                     isOwnListing ||
-                    isChecking ||
-                    invalidDates ||
+                    !!scheduleError ||
+                    datesInvalid ||
+                    availabilityPending ||
                     availabilityError ||
-                    (!!pickupDate && !!returnDate && isAvailable === false)
+                    !availabilitySettled ||
+                    !isAvailable
                   }
                 >
                   {!car.available ? "Unavailable" : isOwnListing ? "Your listing" : "Book Now"}

@@ -16,7 +16,7 @@ import { apiFetch } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { formatINR, type CarData } from "@/components/car-card";
 import { buildBookingWhatsAppUrl } from "@/lib/whatsapp";
-import { formatBookingDateTime } from "@/lib/constants/booking-times";
+import { formatBookingDateTime, validateBookingSchedule } from "@/lib/constants/booking-times";
 import { sumDailyRates, driverDailyMidpoint } from "@/lib/rental-listing";
 import {
   computeBookingPaymentQuote,
@@ -182,6 +182,11 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
   };
 
   const validateForm = () => {
+    const scheduleError = validateBookingSchedule(pickupDate, pickupTime, returnDate, returnTime);
+    if (scheduleError) {
+      toast({ title: "Invalid schedule", description: scheduleError, variant: "destructive" });
+      return false;
+    }
     if (!name.trim()) {
       toast({ title: "Name required", description: "Please enter your full name.", variant: "destructive" });
       return false;

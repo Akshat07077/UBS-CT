@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState, Suspense } from "react";
+import { useMemo, useState, Suspense, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { CarCard, type CarData } from "@/components/car-card";
@@ -10,7 +10,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api";
 import { brand } from "@/lib/brand/config";
 import { SERVICE_CITY } from "@/lib/constants/locations";
-import { Search, FilterX, Car as CarIcon, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, FilterX, Car as CarIcon, SlidersHorizontal, ChevronDown, ChevronUp, CalendarRange } from "lucide-react";
+import {
+  formatBookingDateTime,
+} from "@/lib/constants/booking-times";
+import {
+  hasBookingSearch,
+  parseBookingSearchParams,
+} from "@/lib/booking-search-params";
 
 interface Filters {
   location?: string;
@@ -125,10 +132,19 @@ export default function CarsPage() {
 
 function CarsContent() {
   const searchParams = useSearchParams();
+  const bookingSearch = useMemo(
+    () => parseBookingSearchParams(searchParams),
+    [searchParams]
+  );
   const [filters, setFilters] = useState<Filters>({
     location: searchParams.get("location") || undefined,
   });
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  useEffect(() => {
+    const location = searchParams.get("location") || undefined;
+    setFilters((prev) => (prev.location === location ? prev : { ...prev, location }));
+  }, [searchParams]);
 
   const queryString = new URLSearchParams(
     Object.entries(filters)
@@ -227,6 +243,30 @@ function CarsContent() {
             No city filters yet — cities will appear automatically when vendors list cars.
           </p>
         )}
+        {hasBookingSearch(bookingSearch) && bookingSearch.pickup && bookingSearch.return && (
+          <div className="mt-4 flex items-start gap-2 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-sm">
+            <CalendarRange className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <p className="text-muted-foreground">
+              <span className="font-semibold text-foreground">Your search: </span>
+              {formatBookingDateTime(
+                bookingSearch.pickup,
+                bookingSearch.pickupTime ?? "10:00"
+              )}{" "}
+              →{" "}
+              {formatBookingDateTime(
+                bookingSearch.return,
+                bookingSearch.returnTime ?? "10:00"
+              )}
+              {bookingSearch.location ? (
+                <>
+                  {" "}
+                  · <span className="font-medium text-foreground">{bookingSearch.location}</span>
+                </>
+              ) : null}
+              . Dates carry over when you open a car.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Mobile filter toggle */}
@@ -285,7 +325,9 @@ function CarsContent() {
             </div>
           ) : cars && cars.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
-              {cars.map((car) => <CarCard key={car.id} car={car} />)}
+              {cars.map((car) => (
+                <CarCard key={car.id} car={car} bookingSearch={bookingSearch} />
+              ))}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-20 text-center bg-card rounded-3xl border border-dashed border-border">

@@ -9,6 +9,97 @@ export const BOOKING_TIME_SLOTS = Array.from({ length: 36 }, (_, i) => {
 export const DEFAULT_PICKUP_TIME = "10:00";
 export const DEFAULT_RETURN_TIME = "10:00";
 
+/** Minimum lead time before pickup (same-day bookings). */
+export const MIN_BOOKING_LEAD_MINUTES = 30;
+
+/** Local calendar date YYYY-MM-DD (avoids UTC off-by-one). */
+export function localDateYmd(d = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export function compareTime24(a: string, b: string): number {
+  return a.localeCompare(b);
+}
+
+/** Parse date + time in local timezone. */
+export function parseBookingDateTime(dateYmd: string, time24: string): Date | null {
+  const [y, mo, d] = dateYmd.split("-").map(Number);
+  const [h, mi] = time24.split(":").map(Number);
+  if (!y || !mo || !d || Number.isNaN(h) || Number.isNaN(mi)) return null;
+  return new Date(y, mo - 1, d, h, mi, 0, 0);
+}
+
+/** Round up to the next 30-minute booking slot. */
+export function ceilToBookingSlot(d: Date): string {
+  let total = d.getHours() * 60 + d.getMinutes();
+  total = Math.ceil(total / 30) * 30;
+  if (total > 23 * 60 + 30) return "23:30";
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+/** Earliest pickup time (HH:mm) allowed on `pickupDate`; undefined if any slot is OK. */
+export function earliestPickupTimeOnDate(pickupDate: string, now = new Date()): string | undefined {
+  if (pickupDate !== localDateYmd(now)) return undefined;
+  const earliest = new Date(now.getTime() + MIN_BOOKING_LEAD_MINUTES * 60_000);
+  const slot = ceilToBookingSlot(earliest);
+  if (!BOOKING_TIME_SLOTS.includes(slot)) {
+    return BOOKING_TIME_SLOTS[BOOKING_TIME_SLOTS.length - 1];
+  }
+  return slot;
+}
+
+/** Earliest return time when return is the same day as pickup. */
+export function earliestReturnTimeSameDay(pickupTime: string): string {
+  const [h, m] = pickupTime.split(":").map(Number);
+  const dt = new Date(2000, 0, 1, h, m + MIN_BOOKING_LEAD_MINUTES, 0, 0);
+  return ceilToBookingSlot(dt);
+}
+
+export function defaultPickupTimeForDate(pickupDate: string, now = new Date()): string {
+  const min = earliestPickupTimeOnDate(pickupDate, now);
+  if (!min) return DEFAULT_PICKUP_TIME;
+  return compareTime24(DEFAULT_PICKUP_TIME, min) >= 0 ? DEFAULT_PICKUP_TIME : min;
+}
+
+export function validateBookingSchedule(
+  pickupDate: string,
+  pickupTime: string,
+  returnDate: string,
+  returnTime: string,
+  now = new Date()
+): string | null {
+  if (!isValidBookingTime(pickupTime) || !isValidBookingTime(returnTime)) {
+    return "Please choose valid pickup and return times (6:00 AM – 11:30 PM, every 30 min).";
+  }
+
+  const todayYmd = localDateYmd(now);
+  if (pickupDate < todayYmd) {
+    return "Pickup date cannot be in the past.";
+  }
+
+  const pickupDt = parseBookingDateTime(pickupDate, pickupTime);
+  const returnDt = parseBookingDateTime(returnDate, returnTime);
+  if (!pickupDt || !returnDt) {
+    return "Invalid pickup or return schedule.";
+  }
+
+  const minPickupMs = now.getTime() + MIN_BOOKING_LEAD_MINUTES * 60_000;
+  if (pickupDt.getTime() < minPickupMs) {
+    return `Pickup must be at least ${MIN_BOOKING_LEAD_MINUTES} minutes from now.`;
+  }
+
+  if (returnDt.getTime() <= pickupDt.getTime()) {
+    return "Return must be after pickup (date and time).";
+  }
+
+  return null;
+}
+
 /** "10:00" → "10:00 AM" */
 export function formatTime12h(time24: string): string {
   const [hStr, mStr] = time24.split(":");

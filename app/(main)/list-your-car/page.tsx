@@ -334,7 +334,7 @@ export default function ListYourCarPage() {
 
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between pt-4 border-t border-border/50">
           <p className="text-xs text-muted-foreground order-2 sm:order-1 max-w-sm">
-            By submitting, you agree that {brand.name} may contact you about this listing. This demo does not run payouts or insurance — approval is manual.
+            By submitting, you agree that {brand.name} may contact you about this listing.
           </p>
           <Button type="submit" disabled={isSubmitting || isUploading} className="rounded-xl shadow-lg shadow-primary/20 order-1 sm:order-2">
             {isSubmitting ? "Sending…" : "Submit for review"}
