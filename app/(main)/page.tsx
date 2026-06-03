@@ -358,7 +358,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-2 pb-2">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 mb-2">
         <PricingOfferBanner offer={pricingOffer} />
       </div>
 

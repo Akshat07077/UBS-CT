@@ -8,7 +8,20 @@ export async function apiFetch<T>(
     headers: { "Content-Type": "application/json", ...options?.headers },
     ...options,
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Request failed");
+  if (res.status === 204) {
+    if (!res.ok) throw new Error("Request failed");
+    return undefined as T;
+  }
+  const text = await res.text();
+  let data: { error?: string } | null = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      if (!res.ok) throw new Error("Request failed");
+      return text as T;
+    }
+  }
+  if (!res.ok) throw new Error(data?.error || "Request failed");
   return data as T;
 }

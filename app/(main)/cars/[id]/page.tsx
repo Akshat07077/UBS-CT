@@ -282,7 +282,7 @@ function CarDetailPage() {
     <div className="bg-background pb-16 md:pb-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 md:pt-12">
         <div className="mb-6">
-          <PricingOfferBanner offer={pricingOffer} compact />
+          <PricingOfferBanner offer={pricingOffer} compact showBrowseLink={false} />
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-12">
           {/* 1. Gallery — top on mobile */}

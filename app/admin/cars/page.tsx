@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Car as CarIcon, Clock, ChevronUp, ChevronDown, GripVertical, Upload } from "lucide-react";
+import { Plus, Edit, Trash2, Car as CarIcon, Clock, ChevronUp, ChevronDown, GripVertical, Upload, AlertTriangle } from "lucide-react";
 import { formatINR, type CarData } from "@/components/car-card";
 import { peerHostListingJson } from "@/lib/rental-listing";
 import { canPreviewImageUrl, uploadImageToApi } from "@/lib/upload-client";
@@ -43,6 +43,8 @@ export default function AdminCarsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingCar, setEditingCar] = useState<CarData | null>(null);
   const [viewFilter, setViewFilter] = useState<"all" | "pending">("all");
+  const [deleteTarget, setDeleteTarget] = useState<CarData | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const pendingCars = useMemo(
     () => cars?.filter((c) => c.listingApprovalStatus === "pending") ?? [],
@@ -54,16 +56,25 @@ export default function AdminCarsPage() {
     return cars;
   }, [cars, viewFilter, pendingCars]);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete this vehicle?")) return;
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await apiFetch(`/api/cars/${id}`, { method: "DELETE" });
+      await apiFetch(`/api/cars/${deleteTarget.id}`, { method: "DELETE" });
       queryClient.invalidateQueries({ queryKey: ["cars"] });
       queryClient.invalidateQueries({ queryKey: ["cars", "admin", "moderation"] });
       queryClient.invalidateQueries({ queryKey: ["peer-listings-mine"] });
-      toast({ title: "Deleted", description: "Vehicle removed." });
-    } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      queryClient.invalidateQueries({ queryKey: ["car"] });
+      toast({
+        title: "Vehicle deleted",
+        description: `${deleteTarget.brand} ${deleteTarget.model} has been removed from the fleet.`,
+      });
+      setDeleteTarget(null);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Could not delete vehicle";
+      toast({ title: "Delete failed", description: msg, variant: "destructive" });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -253,7 +264,7 @@ export default function AdminCarsPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleDelete(car.id)}
+                      onClick={() => setDeleteTarget(car)}
                       className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive rounded-md shrink-0"
                       title="Delete"
                     >
@@ -267,6 +278,65 @@ export default function AdminCarsPage() {
           </table>
         </div>
       </div>
+
+      <Dialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setDeleteTarget(null);
+        }}
+      >
+        <DialogContent className="max-w-md rounded-2xl border border-destructive/25 p-0 gap-0 overflow-hidden [&>button]:hidden">
+          <div className="p-6 sm:p-7">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-destructive/10 border border-destructive/20 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6 text-destructive" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <DialogHeader className="text-left space-y-2 p-0">
+                  <DialogTitle className="text-xl font-display font-bold tracking-tight">
+                    Delete this vehicle?
+                  </DialogTitle>
+                </DialogHeader>
+                {deleteTarget ? (
+                  <>
+                    <p className="text-sm text-foreground mt-3 font-semibold">
+                      {deleteTarget.brand} {deleteTarget.model}
+                      <span className="text-muted-foreground font-normal">
+                        {" "}· {deleteTarget.year} · {deleteTarget.location}
+                      </span>
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                      This removes the listing from the website and admin fleet. Past bookings linked to this car are
+                      kept in records, but the vehicle will no longer be bookable.
+                    </p>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 p-4 sm:p-5 bg-muted/40 border-t border-border/60">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 rounded-xl h-11"
+              disabled={deleting}
+              onClick={() => setDeleteTarget(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="flex-1 rounded-xl h-11 gap-2 shadow-md shadow-destructive/20"
+              disabled={deleting}
+              onClick={confirmDelete}
+            >
+              <Trash2 className="w-4 h-4" />
+              {deleting ? "Deleting…" : "Delete vehicle"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
