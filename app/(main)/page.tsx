@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CarCard, type CarData } from "@/components/car-card";
 import { apiFetch } from "@/lib/api";
+import {
+  normalizePricingUpliftSettings,
+  DEFAULT_PRICING_UPLIFT_SETTINGS,
+} from "@/lib/pricing-uplift-settings";
 import { brand } from "@/lib/brand/config";
 import { SERVICE_CITY } from "@/lib/constants/locations";
 import {
@@ -81,6 +85,14 @@ export default function Home() {
     queryKey: ["cars", { available: true }],
     queryFn: () => apiFetch<CarData[]>("/api/cars?available=true"),
   });
+  const { data: appConfig } = useQuery({
+    queryKey: ["app-config"],
+    queryFn: () => apiFetch<{ pricingUplift?: unknown }>("/api/config/public"),
+    staleTime: 60_000,
+  });
+  const pricingUplift = normalizePricingUpliftSettings(
+    appConfig?.pricingUplift ?? DEFAULT_PRICING_UPLIFT_SETTINGS
+  );
 
   const featuredCars = useMemo(() => {
     if (!cars?.length) return [];
@@ -392,7 +404,7 @@ export default function Home() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
               {mostBookedCars.map((car) => (
-                <CarCard key={car.id} car={car} />
+                <CarCard key={car.id} car={car} pricingUplift={pricingUplift} />
               ))}
             </div>
           </div>
@@ -424,7 +436,9 @@ export default function Home() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featuredCars.map((car) => <CarCard key={car.id} car={car} />)}
+              {featuredCars.map((car) => (
+                <CarCard key={car.id} car={car} pricingUplift={pricingUplift} />
+              ))}
             </div>
           )}
 

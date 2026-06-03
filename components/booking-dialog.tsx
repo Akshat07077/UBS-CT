@@ -18,6 +18,7 @@ import { formatINR, type CarData } from "@/components/car-card";
 import { buildBookingWhatsAppUrl } from "@/lib/whatsapp";
 import { formatBookingDateTime, validateBookingSchedule } from "@/lib/constants/booking-times";
 import { sumDailyRates, driverDailyMidpoint } from "@/lib/rental-listing";
+import { normalizePricingUpliftSettings, DEFAULT_PRICING_UPLIFT_SETTINGS } from "@/lib/pricing-uplift-settings";
 import {
   computeBookingPaymentQuote,
   normalizeBookingPaymentSettings,
@@ -130,13 +131,19 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
   const { data: appConfig } = useQuery({
     queryKey: ["app-config"],
     queryFn: () =>
-      apiFetch<{ bookingSandbox: boolean; paymentsEnabled: boolean; bookingPayments: BookingPaymentSettings }>(
-        "/api/config/public"
-      ),
+      apiFetch<{
+        bookingSandbox: boolean;
+        paymentsEnabled: boolean;
+        bookingPayments: BookingPaymentSettings;
+        pricingUplift?: unknown;
+      }>("/api/config/public"),
     staleTime: 60_000,
   });
   const bookingSandbox = appConfig?.bookingSandbox ?? true;
   const paymentSettings = normalizeBookingPaymentSettings(appConfig?.bookingPayments);
+  const pricingUplift = normalizePricingUpliftSettings(
+    appConfig?.pricingUplift ?? DEFAULT_PRICING_UPLIFT_SETTINGS
+  );
 
   const [name, setName] = useState(user?.name ?? "");
   const [phone, setPhone] = useState("");
@@ -152,7 +159,7 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
   const days = differenceInDays(new Date(returnDate), new Date(pickupDate));
   const driverPerDay = driverDailyMidpoint(car.listing);
   const showChauffeur = driverPerDay > 0;
-  const carTotal = sumDailyRates(pickupDate, returnDate, car.pricePerDay);
+  const carTotal = sumDailyRates(pickupDate, returnDate, car.pricePerDay, pricingUplift);
   const driverTotal = withDriver && showChauffeur ? days * driverPerDay : 0;
   const grandTotal = carTotal + driverTotal;
   const paymentQuote = computeBookingPaymentQuote(paymentSettings, car.listing, carTotal, driverTotal);

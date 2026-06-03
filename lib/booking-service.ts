@@ -11,7 +11,7 @@ import {
   computeBookingPaymentQuote,
   securityDepositForCollateral,
 } from "@/lib/booking-payment-settings";
-import { getBookingPaymentSettings } from "@/lib/db/site-settings";
+import { getBookingPaymentSettings, getPricingUpliftSettings } from "@/lib/db/site-settings";
 import type { CollateralType } from "@/lib/constants/collateral";
 
 export function formatBooking(b: typeof bookingsTable.$inferSelect) {
@@ -114,7 +114,8 @@ export async function createBooking(input: {
   }
 
   const days = Math.ceil((returnD.getTime() - pickup.getTime()) / (1000 * 60 * 60 * 24));
-  const rentalTotal = sumDailyRates(pickupDate, returnDate, Number(car.pricePerDay));
+  const pricingUplift = await getPricingUpliftSettings();
+  const rentalTotal = sumDailyRates(pickupDate, returnDate, Number(car.pricePerDay), pricingUplift);
   const driverRate = driverDailyMidpoint(car.listing);
   const driverPrice = withDriver && driverRate > 0 ? days * driverRate : 0;
   const paymentSettings = await getBookingPaymentSettings();
@@ -252,7 +253,8 @@ export async function createManualBooking(input: {
   if (!car) throw new BookingError("Car not found", 404);
 
   const days = Math.ceil((returnD.getTime() - pickup.getTime()) / (1000 * 60 * 60 * 24));
-  const rentalTotal = sumDailyRates(pickupDate, returnDate, Number(car.pricePerDay));
+  const pricingUplift = await getPricingUpliftSettings();
+  const rentalTotal = sumDailyRates(pickupDate, returnDate, Number(car.pricePerDay), pricingUplift);
   const driverRate = driverDailyMidpoint(car.listing);
   const driverPrice = withDriver && driverRate > 0 ? days * driverRate : 0;
   const totalPrice =

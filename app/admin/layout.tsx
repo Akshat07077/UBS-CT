@@ -30,7 +30,7 @@ const NAV = [
   { href: "/admin/contact", label: "Contact inbox", icon: MessageSquare },
   { href: "/admin/leads", label: "All forms", icon: Inbox },
   { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/settings", label: "Payments", icon: IndianRupee },
+  { href: "/admin/settings", label: "Settings", icon: IndianRupee },
   { href: "/admin/export", label: "Export CSV", icon: Download },
 ];
 

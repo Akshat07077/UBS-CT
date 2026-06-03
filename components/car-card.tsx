@@ -7,6 +7,10 @@ import { Users, Fuel, Settings2, MapPin, Sparkles } from "lucide-react";
 import type { CarListingJson } from "@/lib/rental-listing";
 import { pricingContextLabel, scaledDayBand } from "@/lib/rental-listing";
 import { carDetailHref, type BookingSearchParams } from "@/lib/booking-search-params";
+import {
+  DEFAULT_PRICING_UPLIFT_SETTINGS,
+  type PricingUpliftSettings,
+} from "@/lib/pricing-uplift-settings";
 
 export type { CarListingJson };
 
@@ -47,14 +51,16 @@ export function formatINR(amount: number) {
 export function CarCard({
   car,
   bookingSearch,
+  pricingUplift = DEFAULT_PRICING_UPLIFT_SETTINGS,
 }: {
   car: CarData;
   /** Pickup/return (and optional city) from homepage or browse search — forwarded to detail page. */
   bookingSearch?: BookingSearchParams;
+  pricingUplift?: PricingUpliftSettings;
 }) {
   const L = car.listing;
   const today = new Date();
-  const todayBand = L ? scaledDayBand(car.pricePerDay, L.pricePerDayMax, today) : null;
+  const todayBand = L ? scaledDayBand(car.pricePerDay, L.pricePerDayMax, today, pricingUplift) : null;
   const href = carDetailHref(car.id, bookingSearch);
 
   return (
@@ -116,7 +122,7 @@ export function CarCard({
                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Weekday / day</p>
                 {todayBand && (
                   <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-1 max-w-[9rem] ml-auto leading-snug">
-                    Today ({pricingContextLabel(today)}): {formatINR(todayBand.from)} – {formatINR(todayBand.to)}
+                    Today ({pricingContextLabel(today, pricingUplift)}): {formatINR(todayBand.from)} – {formatINR(todayBand.to)}
                   </p>
                 )}
               </>

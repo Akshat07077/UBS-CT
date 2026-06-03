@@ -39,6 +39,11 @@ import {
   BOOKING_TIME_SLOTS,
 } from "@/lib/constants/booking-times";
 import { parseBookingSearchParams } from "@/lib/booking-search-params";
+import {
+  normalizePricingUpliftSettings,
+  DEFAULT_PRICING_UPLIFT_SETTINGS,
+  peakSeasonRangeLabel,
+} from "@/lib/pricing-uplift-settings";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
 function parseLocalYmd(ymd: string): Date {
@@ -104,10 +109,15 @@ function CarDetailPage() {
   const { data: appConfig } = useQuery({
     queryKey: ["app-config"],
     queryFn: () =>
-      apiFetch<{ bookingPayments: BookingPaymentSettings }>("/api/config/public"),
+      apiFetch<{ bookingPayments: BookingPaymentSettings; pricingUplift?: unknown }>(
+        "/api/config/public"
+      ),
     staleTime: 60_000,
   });
   const paymentSettings = normalizeBookingPaymentSettings(appConfig?.bookingPayments);
+  const pricingUplift = normalizePricingUpliftSettings(
+    appConfig?.pricingUplift ?? DEFAULT_PRICING_UPLIFT_SETTINGS
+  );
 
   const [pickupDate, setPickupDate] = useState(
     () => searchParams.get("pickup") || defaultPickupYmd()
@@ -232,7 +242,9 @@ function CarDetailPage() {
   const isAvailable = availabilitySettled && availability.available === true;
   const L = car.listing;
   const rentalTotal =
-    pickupDate && returnDate && days > 0 ? sumDailyRates(pickupDate, returnDate, car.pricePerDay) : 0;
+    pickupDate && returnDate && days > 0
+      ? sumDailyRates(pickupDate, returnDate, car.pricePerDay, pricingUplift)
+      : 0;
   const driverTotal = 0;
   const total = rentalTotal + driverTotal;
   const paymentQuote =
@@ -240,7 +252,7 @@ function CarDetailPage() {
       ? computeBookingPaymentQuote(paymentSettings, car.listing, rentalTotal, driverTotal)
       : null;
   const now = new Date();
-  const todayBand = L ? scaledDayBand(car.pricePerDay, L.pricePerDayMax, now) : null;
+  const todayBand = L ? scaledDayBand(car.pricePerDay, L.pricePerDayMax, now, pricingUplift) : null;
   const isOwnListing = car.isViewerOwner === true;
   const galleryImages =
     car.images && car.images.length > 0 ? car.images : car.imageUrl ? [car.imageUrl] : [];
@@ -349,7 +361,7 @@ function CarDetailPage() {
                       <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Weekday band / day · GST incl.</p>
                       {todayBand && (
                         <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
-                          Today: ~{formatINR(todayBand.from)} – {formatINR(todayBand.to)} ({pricingContextLabel(now)})
+                          Today: ~{formatINR(todayBand.from)} – {formatINR(todayBand.to)} ({pricingContextLabel(now, pricingUplift)})
                         </p>
                       )}
                     </>
@@ -445,7 +457,12 @@ function CarDetailPage() {
                       <span className="font-medium">{formatINR(rentalTotal)}</span>
                     </div>
                     <p className="text-[11px] text-muted-foreground mb-3">
-                      Nightly rates include weekend &amp; Oct–Mar season uplift when applicable (capped).
+                      Nightly rates include
+                      {pricingUplift.weekendUpliftEnabled ? ` weekend +${pricingUplift.weekendUpliftPercent}%` : ""}
+                      {pricingUplift.peakSeasonEnabled
+                        ? ` · peak (${peakSeasonRangeLabel(pricingUplift.peakSeasonStartMonth, pricingUplift.peakSeasonEndMonth)}) +${pricingUplift.peakSeasonUpliftPercent}%`
+                        : ""}{" "}
+                      when applicable (max +{pricingUplift.combinedMaxUpliftPercent}% combined).
                     </p>
                     <div className="flex justify-between text-sm mb-3">
                       <span className="text-muted-foreground">GST & Taxes</span>
@@ -605,12 +622,19 @@ function CarDetailPage() {
                   <p className="font-semibold text-foreground mb-1">Pricing logic (realistic)</p>
                   <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
                     <li>Weekdays use the published low–high band.</li>
-                    <li>Weekends add about 10–15% on top of weekday base.</li>
-                    <li>Tourist / wedding season (Oct–Mar) adds roughly 25–35%; combined uplifts are capped.</li>
+                    {pricingUplift.weekendUpliftEnabled && (
+                      <li>Weekends add +{pricingUplift.weekendUpliftPercent}% on weekday base.</li>
+                    )}
+                    {pricingUplift.peakSeasonEnabled && (
+                      <li>
+                        Peak season ({peakSeasonRangeLabel(pricingUplift.peakSeasonStartMonth, pricingUplift.peakSeasonEndMonth)})
+                        adds +{pricingUplift.peakSeasonUpliftPercent}%; combined uplift capped at +{pricingUplift.combinedMaxUpliftPercent}%.
+                      </li>
+                    )}
                   </ul>
                   {todayBand && (
                     <p className="mt-3 text-xs font-medium text-primary">
-                      Today ({pricingContextLabel(now)}): about {formatINR(todayBand.from)} – {formatINR(todayBand.to)} / day for this vehicle.
+                      Today ({pricingContextLabel(now, pricingUplift)}): about {formatINR(todayBand.from)} – {formatINR(todayBand.to)} / day for this vehicle.
                     </p>
                   )}
                 </div>

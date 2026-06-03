@@ -1,6 +1,11 @@
 /** Extended marketplace-style fields for Indian mid-tier city rentals (POC). */
 
 import { brand } from "@/lib/brand/config";
+import {
+  DEFAULT_PRICING_UPLIFT_SETTINGS,
+  isPeakSeasonMonth,
+  type PricingUpliftSettings,
+} from "@/lib/pricing-uplift-settings";
 
 export type CarSegment = "budget" | "mid" | "premium" | "luxury" | "addon";
 
@@ -52,31 +57,51 @@ export function isWeekendIndia(d: Date): boolean {
   return day === 0 || day === 6;
 }
 
-/** Oct–Mar: weddings + north / Rajasthan tourist season (POC rule). */
-export function isTouristOrWeddingSeason(d: Date): boolean {
+/** Peak / wedding season — uses admin-configured months when settings passed. */
+export function isTouristOrWeddingSeason(
+  d: Date,
+  settings: PricingUpliftSettings = DEFAULT_PRICING_UPLIFT_SETTINGS
+): boolean {
+  if (!settings.peakSeasonEnabled) return false;
   const m = d.getMonth() + 1;
-  return m >= 10 || m <= 3;
+  return isPeakSeasonMonth(m, settings.peakSeasonStartMonth, settings.peakSeasonEndMonth);
 }
 
-/** Weekends +10–15%, peak season +~32%, combined capped at +45% vs weekday base. */
-export function priceMultiplierForDate(d: Date): number {
+/** Weekend + peak uplifts from admin settings; combined capped vs weekday base. */
+export function priceMultiplierForDate(
+  d: Date,
+  settings: PricingUpliftSettings = DEFAULT_PRICING_UPLIFT_SETTINGS
+): number {
   let m = 1;
-  if (isTouristOrWeddingSeason(d)) m *= 1.32;
-  if (isWeekendIndia(d)) m *= 1.15;
-  return Math.min(m, 1.45);
+  if (settings.peakSeasonEnabled && isTouristOrWeddingSeason(d, settings)) {
+    m *= 1 + settings.peakSeasonUpliftPercent / 100;
+  }
+  if (settings.weekendUpliftEnabled && isWeekendIndia(d)) {
+    m *= 1 + settings.weekendUpliftPercent / 100;
+  }
+  const cap = 1 + settings.combinedMaxUpliftPercent / 100;
+  return Math.min(m, cap);
 }
 
-export function pricingContextLabel(d: Date): string {
-  const peak = isTouristOrWeddingSeason(d);
-  const wknd = isWeekendIndia(d);
+export function pricingContextLabel(
+  d: Date,
+  settings: PricingUpliftSettings = DEFAULT_PRICING_UPLIFT_SETTINGS
+): string {
+  const peak = isTouristOrWeddingSeason(d, settings);
+  const wknd = settings.weekendUpliftEnabled && isWeekendIndia(d);
   if (peak && wknd) return "Peak season · Weekend";
   if (peak) return "Peak / wedding season";
   if (wknd) return "Weekend";
   return "Weekday";
 }
 
-export function scaledDayBand(priceMin: number, priceMax: number, d: Date): { from: number; to: number } {
-  const mul = priceMultiplierForDate(d);
+export function scaledDayBand(
+  priceMin: number,
+  priceMax: number,
+  d: Date,
+  settings: PricingUpliftSettings = DEFAULT_PRICING_UPLIFT_SETTINGS
+): { from: number; to: number } {
+  const mul = priceMultiplierForDate(d, settings);
   return { from: Math.round(priceMin * mul), to: Math.round(priceMax * mul) };
 }
 
@@ -87,13 +112,18 @@ function parseYmd(ymd: string): Date | null {
 }
 
 /** Sum each calendar rental day [pickup, return) with weekday base × daily multiplier. */
-export function sumDailyRates(pickupDateStr: string, returnDateStr: string, weekdayPricePerDay: number): number {
+export function sumDailyRates(
+  pickupDateStr: string,
+  returnDateStr: string,
+  weekdayPricePerDay: number,
+  settings: PricingUpliftSettings = DEFAULT_PRICING_UPLIFT_SETTINGS
+): number {
   const start = parseYmd(pickupDateStr);
   const end = parseYmd(returnDateStr);
   if (!start || !end || end <= start) return 0;
   let total = 0;
   for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
-    total += weekdayPricePerDay * priceMultiplierForDate(new Date(d));
+    total += weekdayPricePerDay * priceMultiplierForDate(new Date(d), settings);
   }
   return Math.round(total);
 }
