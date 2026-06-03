@@ -48,6 +48,7 @@ import {
   adjustedListingPrice,
   normalizePricingOfferSettings,
   DEFAULT_PRICING_OFFER_SETTINGS,
+  pricingOfferCheckoutLine,
 } from "@/lib/pricing-offer-settings";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
@@ -237,6 +238,7 @@ function CarDetailPage() {
         )
       : 0;
   const rentalTotal = applyPricingOffer(rentalSubtotal, pricingOffer);
+  const offerLine = pricingOfferCheckoutLine(rentalSubtotal, rentalTotal, pricingOffer);
   const driverTotal = 0;
   const total = rentalTotal + driverTotal;
   const paymentQuote =
@@ -436,6 +438,23 @@ function CarDetailPage() {
 
                 {pickupDate && returnDate && (
                   <div className="bg-muted/50 rounded-2xl p-5 border border-border/50">
+                    {offerLine && (
+                      <>
+                        <div className="flex justify-between text-sm mb-2">
+                          <span className="text-muted-foreground">Rental (before offer)</span>
+                          <span className="text-muted-foreground line-through">{formatINR(rentalSubtotal)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm mb-3">
+                          <span className="text-muted-foreground">{offerLine.label}</span>
+                          <span
+                            className={`font-medium ${offerLine.delta < 0 ? "text-green-600" : "text-amber-600"}`}
+                          >
+                            {offerLine.delta < 0 ? "−" : "+"}
+                            {formatINR(Math.abs(offerLine.delta))}
+                          </span>
+                        </div>
+                      </>
+                    )}
                     <div className="flex justify-between text-sm mb-3">
                       <span className="text-muted-foreground">
                         Rental{rentalLabel ? ` (${rentalLabel})` : ""}

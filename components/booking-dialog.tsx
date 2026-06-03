@@ -23,6 +23,7 @@ import {
   applyPricingOffer,
   normalizePricingOfferSettings,
   DEFAULT_PRICING_OFFER_SETTINGS,
+  pricingOfferCheckoutLine,
 } from "@/lib/pricing-offer-settings";
 import {
   computeBookingPaymentQuote,
@@ -180,6 +181,7 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
     pricingUplift
   );
   const carTotal = applyPricingOffer(carSubtotal, pricingOffer);
+  const offerLine = pricingOfferCheckoutLine(carSubtotal, carTotal, pricingOffer);
   const driverTotal = withDriver && showChauffeur ? days * driverPerDay : 0;
   const grandTotal = carTotal + driverTotal;
   const paymentQuote = computeBookingPaymentQuote(paymentSettings, car.listing, carTotal, driverTotal);
@@ -373,6 +375,21 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
               {formatBookingDateTime(returnDate, returnTime)}
             </p>
           </div>
+          {offerLine && (
+            <>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Rental (before offer)</span>
+                <span className="text-muted-foreground line-through">{formatINR(carSubtotal)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{offerLine.label}</span>
+                <span className={`font-medium ${offerLine.delta < 0 ? "text-green-600" : "text-amber-600"}`}>
+                  {offerLine.delta < 0 ? "−" : "+"}
+                  {formatINR(Math.abs(offerLine.delta))}
+                </span>
+              </div>
+            </>
+          )}
           <div className="flex justify-between">
             <span className="text-muted-foreground">
               Rental{rentalLabel ? ` (${rentalLabel})` : ""}

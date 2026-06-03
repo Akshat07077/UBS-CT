@@ -13,6 +13,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
@@ -26,6 +32,7 @@ import {
   LayoutList,
   Phone,
   LogIn,
+  AlertTriangle,
 } from "lucide-react";
 import { formatINR, type CarData } from "@/components/car-card";
 import type { MyBookingRow } from "@/lib/my-account";
@@ -112,6 +119,8 @@ function DashboardContent() {
   const [tab, setTab] = useState<Tab>(tabParam === "listings" ? "listings" : "bookings");
   const [phoneInput, setPhoneInput] = useState("");
   const [lookupPhone, setLookupPhone] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CarData | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const saved = typeof window !== "undefined" ? sessionStorage.getItem(PHONE_STORAGE_KEY) : null;
@@ -167,20 +176,28 @@ function DashboardContent() {
     queryClient.invalidateQueries({ queryKey: ["my-host-bookings"] });
   };
 
-  const removeListing = async (id: number) => {
+  const confirmRemoveListing = async () => {
+    if (!deleteTarget) return;
     if (!user) {
       toast({ title: "Log in required", description: "Sign in to remove a listing.", variant: "destructive" });
       return;
     }
-    if (!confirm("Remove this listing from the marketplace?")) return;
+    setDeleting(true);
     try {
-      await apiFetch(`/api/cars/${id}`, { method: "DELETE" });
+      await apiFetch(`/api/cars/${deleteTarget.id}`, { method: "DELETE" });
       await queryClient.invalidateQueries({ queryKey: ["my-listings"] });
       await queryClient.invalidateQueries({ queryKey: ["cars"] });
-      toast({ title: "Listing removed" });
+      await queryClient.invalidateQueries({ queryKey: ["peer-listings-mine"] });
+      toast({
+        title: "Listing removed",
+        description: `${deleteTarget.brand} ${deleteTarget.model} is no longer on the marketplace.`,
+      });
+      setDeleteTarget(null);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Could not remove listing";
       toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -358,7 +375,17 @@ function DashboardContent() {
                           variant="ghost"
                           size="icon"
                           className="text-destructive hover:bg-destructive/10 rounded-lg"
-                          onClick={() => removeListing(c.id)}
+                          onClick={() => {
+                            if (!user) {
+                              toast({
+                                title: "Log in required",
+                                description: "Sign in to remove a listing.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            setDeleteTarget(c);
+                          }}
                           aria-label="Remove listing"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -397,6 +424,61 @@ function DashboardContent() {
           </section>
         </div>
       )}
+
+      <Dialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setDeleteTarget(null);
+        }}
+      >
+        <DialogContent className="max-w-md rounded-2xl border border-destructive/25 p-0 gap-0 overflow-hidden [&>button]:hidden">
+          <div className="p-6 sm:p-7">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-destructive/10 border border-destructive/20 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6 text-destructive" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <DialogHeader className="text-left space-y-2 p-0">
+                  <DialogTitle className="text-xl font-display font-bold tracking-tight">
+                    Remove this listing?
+                  </DialogTitle>
+                </DialogHeader>
+                {deleteTarget ? (
+                  <>
+                    <p className="text-sm text-foreground mt-3 font-semibold">
+                      {deleteTarget.brand} {deleteTarget.model}
+                      <span className="text-muted-foreground font-normal"> · {deleteTarget.location}</span>
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                      This takes your car off the marketplace. You can submit a new listing anytime from List your car.
+                    </p>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 p-4 sm:p-5 bg-muted/40 border-t border-border/60">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 rounded-xl h-11"
+              disabled={deleting}
+              onClick={() => setDeleteTarget(null)}
+            >
+              Keep listing
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="flex-1 rounded-xl h-11"
+              disabled={deleting}
+              onClick={confirmRemoveListing}
+            >
+              {deleting ? "Removing…" : "Remove listing"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

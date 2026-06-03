@@ -564,7 +564,7 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
       <div className="p-4 rounded-xl border border-border/60 bg-muted/20 space-y-4">
         <div>
           <Label className="text-base">Booking advance (this car)</Label>
-          <p className="text-xs text-muted-foreground mt-1">Pickup security (bike/scooty vs ₹20k) is set in Admin → Payments.</p>
+          <p className="text-xs text-muted-foreground mt-1">Pickup security (bike/scooty vs ₹20k) is set in Admin → Settings.</p>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">

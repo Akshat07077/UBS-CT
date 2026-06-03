@@ -71,6 +71,21 @@ export function applyPricingOffer(amount: number, settings: PricingOfferSettings
   return Math.max(0, Math.round(amount * factor));
 }
 
+/** When an offer changes the rental total, returns label + signed delta for checkout summaries. */
+export function pricingOfferCheckoutLine(
+  preOfferAmount: number,
+  postOfferAmount: number,
+  settings: PricingOfferSettings
+): { label: string; delta: number } | null {
+  if (!settings.enabled || !settings.applyToBookings || settings.percent <= 0) return null;
+  if (preOfferAmount === postOfferAmount) return null;
+  const label =
+    settings.badgeText ||
+    settings.title ||
+    (settings.direction === "discount" ? `${settings.percent}% off` : `+${settings.percent}%`);
+  return { label, delta: postOfferAmount - preOfferAmount };
+}
+
 export function adjustedListingPrice(
   basePrice: number,
   settings: PricingOfferSettings
