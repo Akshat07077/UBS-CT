@@ -11,8 +11,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import type { BookingPaymentSettings } from "@/lib/booking-payment-settings";
 import type { PricingUpliftSettings } from "@/lib/pricing-uplift-settings";
+import type { PricingOfferSettings } from "@/lib/pricing-offer-settings";
 import { peakSeasonRangeLabel } from "@/lib/pricing-uplift-settings";
-import { Wallet, Shield, Save, TrendingUp } from "lucide-react";
+import { Wallet, Shield, Save, TrendingUp, Tag } from "lucide-react";
 
 export default function AdminSettingsPage() {
   const queryClient = useQueryClient();
@@ -24,14 +25,20 @@ export default function AdminSettingsPage() {
     queryKey: ["admin-pricing-uplift"],
     queryFn: () => apiFetch<PricingUpliftSettings>("/api/admin/settings/pricing-uplift"),
   });
+  const { data: offerData, isLoading: offerLoading } = useQuery<PricingOfferSettings>({
+    queryKey: ["admin-pricing-offer"],
+    queryFn: () => apiFetch<PricingOfferSettings>("/api/admin/settings/pricing-offer"),
+  });
 
   const [paymentForm, setPaymentForm] = useState<BookingPaymentSettings | null>(null);
   const [pricingForm, setPricingForm] = useState<PricingUpliftSettings | null>(null);
+  const [offerForm, setOfferForm] = useState<PricingOfferSettings | null>(null);
   const [saving, setSaving] = useState(false);
 
   const paymentSettings = paymentForm ?? paymentData;
   const pricingSettings = pricingForm ?? pricingData;
-  const loading = paymentsLoading || pricingLoading;
+  const offerSettings = offerForm ?? offerData;
+  const loading = paymentsLoading || pricingLoading || offerLoading;
 
   const updatePayment = <K extends keyof BookingPaymentSettings>(
     key: K,
@@ -44,9 +51,13 @@ export default function AdminSettingsPage() {
     setPricingForm((prev) => ({ ...(prev ?? pricingData!), [key]: value }));
   };
 
+  const updateOffer = <K extends keyof PricingOfferSettings>(key: K, value: PricingOfferSettings[K]) => {
+    setOfferForm((prev) => ({ ...(prev ?? offerData!), [key]: value }));
+  };
+
   const onSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!paymentSettings || !pricingSettings) return;
+    if (!paymentSettings || !pricingSettings || !offerSettings) return;
     setSaving(true);
     try {
       await Promise.all([
@@ -58,13 +69,19 @@ export default function AdminSettingsPage() {
           method: "PUT",
           body: JSON.stringify(pricingSettings),
         }),
+        apiFetch("/api/admin/settings/pricing-offer", {
+          method: "PUT",
+          body: JSON.stringify(offerSettings),
+        }),
       ]);
       toast({ title: "Settings saved" });
       queryClient.invalidateQueries({ queryKey: ["admin-booking-payments"] });
       queryClient.invalidateQueries({ queryKey: ["admin-pricing-uplift"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-pricing-offer"] });
       queryClient.invalidateQueries({ queryKey: ["app-config"] });
       setPaymentForm(null);
       setPricingForm(null);
+      setOfferForm(null);
     } catch (err: unknown) {
       toast({
         title: "Save failed",
@@ -81,15 +98,109 @@ export default function AdminSettingsPage() {
       <div className="bg-card p-4 sm:p-6 rounded-2xl border border-border shadow-sm">
         <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight">Site settings</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Booking payments, security deposit, and weekend / peak-season price uplifts.
+          Booking payments, security deposit, promotional offers, and weekend / peak-season price uplifts.
         </p>
       </div>
 
-      {loading || !paymentSettings || !pricingSettings ? (
+      {loading || !paymentSettings || !pricingSettings || !offerSettings ? (
         <Skeleton className="h-[32rem] rounded-2xl" />
       ) : (
         <form onSubmit={onSave} className="bg-card border border-border rounded-2xl p-4 sm:p-6 space-y-8 shadow-sm">
           <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Tag className="w-5 h-5 text-primary" />
+              <h2 className="font-display font-bold text-lg">Promotional offer</h2>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              When enabled with a percent and title or badge, an offer banner appears on the homepage and car pages.
+              Nothing shows until you turn this on and fill in the details below.
+            </p>
+
+            <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+              <input
+                type="checkbox"
+                checked={offerSettings.enabled}
+                onChange={(e) => updateOffer("enabled", e.target.checked)}
+                className="accent-primary"
+              />
+              Show offer on website
+            </label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Offer type</Label>
+                <select
+                  value={offerSettings.direction}
+                  onChange={(e) =>
+                    updateOffer("direction", e.target.value as PricingOfferSettings["direction"])
+                  }
+                  disabled={!offerSettings.enabled}
+                  className="flex h-11 w-full rounded-xl border border-border bg-background px-3 text-sm"
+                >
+                  <option value="discount">Discount (lower prices)</option>
+                  <option value="increment">Increment (higher prices)</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Percent (%)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={offerSettings.percent}
+                  onChange={(e) => updateOffer("percent", parseInt(e.target.value, 10) || 0)}
+                  disabled={!offerSettings.enabled}
+                  className="rounded-xl h-11"
+                  placeholder="e.g. 10"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Badge text (short)</Label>
+              <Input
+                value={offerSettings.badgeText}
+                onChange={(e) => updateOffer("badgeText", e.target.value)}
+                disabled={!offerSettings.enabled}
+                className="rounded-xl h-11"
+                placeholder="10% OFF"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Offer title</Label>
+              <Input
+                value={offerSettings.title}
+                onChange={(e) => updateOffer("title", e.target.value)}
+                disabled={!offerSettings.enabled}
+                className="rounded-xl h-11"
+                placeholder="Festive season offer"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description (optional)</Label>
+              <Textarea
+                value={offerSettings.description}
+                onChange={(e) => updateOffer("description", e.target.value)}
+                disabled={!offerSettings.enabled}
+                rows={2}
+                className="rounded-xl resize-none"
+                placeholder="Valid on all cars booked this month."
+              />
+            </div>
+
+            <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+              <input
+                type="checkbox"
+                checked={offerSettings.applyToBookings}
+                onChange={(e) => updateOffer("applyToBookings", e.target.checked)}
+                disabled={!offerSettings.enabled}
+                className="accent-primary"
+              />
+              Apply percent to listed rates and booking totals
+            </label>
+          </section>
+
+          <section className="space-y-4 border-t border-border pt-6">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-primary" />
               <h2 className="font-display font-bold text-lg">Weekend &amp; peak-season pricing</h2>

@@ -20,6 +20,11 @@ import { formatBookingDateTime, validateBookingSchedule } from "@/lib/constants/
 import { computeRentalTotal, formatRentalDuration, rentalDurationHours, driverDailyMidpoint } from "@/lib/rental-listing";
 import { normalizePricingUpliftSettings, DEFAULT_PRICING_UPLIFT_SETTINGS } from "@/lib/pricing-uplift-settings";
 import {
+  applyPricingOffer,
+  normalizePricingOfferSettings,
+  DEFAULT_PRICING_OFFER_SETTINGS,
+} from "@/lib/pricing-offer-settings";
+import {
   computeBookingPaymentQuote,
   normalizeBookingPaymentSettings,
   type BookingPaymentSettings,
@@ -136,6 +141,7 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
         paymentsEnabled: boolean;
         bookingPayments: BookingPaymentSettings;
         pricingUplift?: unknown;
+        pricingOffer?: unknown;
       }>("/api/config/public"),
     staleTime: 60_000,
   });
@@ -143,6 +149,9 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
   const paymentSettings = normalizeBookingPaymentSettings(appConfig?.bookingPayments);
   const pricingUplift = normalizePricingUpliftSettings(
     appConfig?.pricingUplift ?? DEFAULT_PRICING_UPLIFT_SETTINGS
+  );
+  const pricingOffer = normalizePricingOfferSettings(
+    appConfig?.pricingOffer ?? DEFAULT_PRICING_OFFER_SETTINGS
   );
 
   const [name, setName] = useState(user?.name ?? "");
@@ -161,7 +170,7 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
   const days = differenceInDays(new Date(returnDate), new Date(pickupDate));
   const driverPerDay = driverDailyMidpoint(car.listing);
   const showChauffeur = driverPerDay > 0;
-  const carTotal = computeRentalTotal(
+  const carSubtotal = computeRentalTotal(
     pickupDate,
     pickupTime,
     returnDate,
@@ -170,6 +179,7 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
     car.pricePerHour,
     pricingUplift
   );
+  const carTotal = applyPricingOffer(carSubtotal, pricingOffer);
   const driverTotal = withDriver && showChauffeur ? days * driverPerDay : 0;
   const grandTotal = carTotal + driverTotal;
   const paymentQuote = computeBookingPaymentQuote(paymentSettings, car.listing, carTotal, driverTotal);

@@ -11,7 +11,8 @@ import {
   computeBookingPaymentQuote,
   securityDepositForCollateral,
 } from "@/lib/booking-payment-settings";
-import { getBookingPaymentSettings, getPricingUpliftSettings } from "@/lib/db/site-settings";
+import { getBookingPaymentSettings, getPricingOfferSettings, getPricingUpliftSettings } from "@/lib/db/site-settings";
+import { applyPricingOffer } from "@/lib/pricing-offer-settings";
 import type { CollateralType } from "@/lib/constants/collateral";
 
 export function formatBooking(b: typeof bookingsTable.$inferSelect) {
@@ -119,7 +120,7 @@ export async function createBooking(input: {
     car.pricePerHour != null && car.pricePerHour !== ""
       ? Number(car.pricePerHour)
       : defaultHourlyFromDaily(Number(car.pricePerDay));
-  const rentalTotal = computeRentalTotal(
+  const rentalSubtotal = computeRentalTotal(
     pickupDate,
     pickupTime,
     returnDate,
@@ -128,6 +129,8 @@ export async function createBooking(input: {
     pricePerHour,
     pricingUplift
   );
+  const pricingOffer = await getPricingOfferSettings();
+  const rentalTotal = applyPricingOffer(rentalSubtotal, pricingOffer);
   const driverRate = driverDailyMidpoint(car.listing);
   const driverPrice = withDriver && driverRate > 0 ? days * driverRate : 0;
   const paymentSettings = await getBookingPaymentSettings();
@@ -270,7 +273,7 @@ export async function createManualBooking(input: {
     car.pricePerHour != null && car.pricePerHour !== ""
       ? Number(car.pricePerHour)
       : defaultHourlyFromDaily(Number(car.pricePerDay));
-  const rentalTotal = computeRentalTotal(
+  const rentalSubtotal = computeRentalTotal(
     pickupDate,
     pickupTime,
     returnDate,
@@ -279,6 +282,8 @@ export async function createManualBooking(input: {
     pricePerHour,
     pricingUplift
   );
+  const pricingOffer = await getPricingOfferSettings();
+  const rentalTotal = applyPricingOffer(rentalSubtotal, pricingOffer);
   const driverRate = driverDailyMidpoint(car.listing);
   const driverPrice = withDriver && driverRate > 0 ? days * driverRate : 0;
   const totalPrice =

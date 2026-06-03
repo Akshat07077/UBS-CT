@@ -42,6 +42,13 @@ import {
   DEFAULT_PRICING_UPLIFT_SETTINGS,
   peakSeasonRangeLabel,
 } from "@/lib/pricing-uplift-settings";
+import { PricingOfferBanner } from "@/components/pricing-offer-banner";
+import {
+  applyPricingOffer,
+  adjustedListingPrice,
+  normalizePricingOfferSettings,
+  DEFAULT_PRICING_OFFER_SETTINGS,
+} from "@/lib/pricing-offer-settings";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
 function defaultPickupYmd() {
@@ -74,7 +81,7 @@ function CarDetailPage() {
   const { data: appConfig } = useQuery({
     queryKey: ["app-config"],
     queryFn: () =>
-      apiFetch<{ bookingPayments: BookingPaymentSettings; pricingUplift?: unknown }>(
+      apiFetch<{ bookingPayments: BookingPaymentSettings; pricingUplift?: unknown; pricingOffer?: unknown }>(
         "/api/config/public"
       ),
     staleTime: 60_000,
@@ -82,6 +89,9 @@ function CarDetailPage() {
   const paymentSettings = normalizeBookingPaymentSettings(appConfig?.bookingPayments);
   const pricingUplift = normalizePricingUpliftSettings(
     appConfig?.pricingUplift ?? DEFAULT_PRICING_UPLIFT_SETTINGS
+  );
+  const pricingOffer = normalizePricingOfferSettings(
+    appConfig?.pricingOffer ?? DEFAULT_PRICING_OFFER_SETTINGS
   );
 
   const [pickupDate, setPickupDate] = useState(
@@ -214,7 +224,7 @@ function CarDetailPage() {
     showAvailabilityCheck && !availabilityPending && availability !== undefined;
   const isAvailable = availabilitySettled && availability.available === true;
   const L = car.listing;
-  const rentalTotal =
+  const rentalSubtotal =
     pickupDate && returnDate && pickupTime && returnTime && rentalHours > 0
       ? computeRentalTotal(
           pickupDate,
@@ -226,6 +236,7 @@ function CarDetailPage() {
           pricingUplift
         )
       : 0;
+  const rentalTotal = applyPricingOffer(rentalSubtotal, pricingOffer);
   const driverTotal = 0;
   const total = rentalTotal + driverTotal;
   const paymentQuote =
@@ -236,6 +247,8 @@ function CarDetailPage() {
   const isOwnListing = car.isViewerOwner === true;
   const galleryImages =
     car.images && car.images.length > 0 ? car.images : car.imageUrl ? [car.imageUrl] : [];
+  const dayPrice = adjustedListingPrice(car.pricePerDay, pricingOffer);
+  const hourPrice = adjustedListingPrice(car.pricePerHour, pricingOffer);
 
   const handleBookNow = () => {
     if (!pickupDate || !returnDate) {
@@ -268,6 +281,9 @@ function CarDetailPage() {
   return (
     <div className="bg-background pb-16 md:pb-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 md:pt-12">
+        <div className="mb-6">
+          <PricingOfferBanner offer={pricingOffer} compact />
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-12">
           {/* 1. Gallery — top on mobile */}
           {galleryImages.length > 0 && (
@@ -333,11 +349,17 @@ function CarDetailPage() {
             <div className="bg-card rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-2xl border border-border/50 lg:sticky lg:top-28">
               <div className="flex items-center justify-between mb-6 gap-3">
                 <div className="min-w-0">
+                  {dayPrice.original != null ? (
+                    <p className="text-sm text-muted-foreground line-through">{formatINR(dayPrice.original)}</p>
+                  ) : null}
                   <p className="text-2xl md:text-3xl font-display font-bold text-primary leading-tight">
-                    {formatINR(car.pricePerDay)}
+                    {formatINR(dayPrice.price)}
                   </p>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Per day · GST incl.</p>
-                  <p className="text-lg font-display font-bold text-foreground mt-2">{formatINR(car.pricePerHour)}</p>
+                  {hourPrice.original != null ? (
+                    <p className="text-xs text-muted-foreground line-through mt-2">{formatINR(hourPrice.original)}</p>
+                  ) : null}
+                  <p className="text-lg font-display font-bold text-foreground mt-2">{formatINR(hourPrice.price)}</p>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Per hour · under 24h rentals</p>
                 </div>
                 {car.available ? (

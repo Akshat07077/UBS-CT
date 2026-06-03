@@ -32,7 +32,7 @@ const OFFICES = [
 
 const FAQS = [
   { q: "What documents do I need to rent a car?", a: "A valid driving licence, Aadhaar card or passport, and a selfie for verification. That's it." },
-  { q: "Is there a security deposit?", a: "No security deposit for verified members. First-time renters may need a refundable ₹2,000 hold." },
+  { q: "Is there a security deposit?", a: "Yes. At pickup you must choose one option: leave your bike or scooty as deposit, or pay a refundable ₹20,000 cash deposit. Your bike/scooty or cash is returned when you bring the car back in agreed condition." },
   { q: "Can I cancel my booking?", a: "Yes. Free cancellation up to 24 hours before pickup. After that, a 10% fee applies." },
   { q: "Do you offer doorstep delivery?", a: "Yes. Delivery depends on the listed vendor city and service coverage for that booking." },
   { q: "Is fuel included in the price?", a: "No, fuel is not included. The car is delivered with a full tank and should be returned full." },

@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { Users, Fuel, Settings2, MapPin, Sparkles } from "lucide-react";
 import type { CarListingJson } from "@/lib/rental-listing";
 import { carDetailHref, type BookingSearchParams } from "@/lib/booking-search-params";
+import { adjustedListingPrice, type PricingOfferSettings } from "@/lib/pricing-offer-settings";
+import { PricingOfferBadge } from "@/components/pricing-offer-banner";
 
 export type { CarListingJson };
 
@@ -47,13 +49,21 @@ export function formatINR(amount: number) {
 export function CarCard({
   car,
   bookingSearch,
+  pricingOffer,
 }: {
   car: CarData;
   /** Pickup/return (and optional city) from homepage or browse search — forwarded to detail page. */
   bookingSearch?: BookingSearchParams;
+  pricingOffer?: PricingOfferSettings | null;
 }) {
   const L = car.listing;
   const href = carDetailHref(car.id, bookingSearch);
+  const dayPrice = pricingOffer
+    ? adjustedListingPrice(car.pricePerDay, pricingOffer)
+    : { price: car.pricePerDay, original: null as number | null };
+  const hourPrice = pricingOffer
+    ? adjustedListingPrice(car.pricePerHour, pricingOffer)
+    : { price: car.pricePerHour, original: null as number | null };
 
   return (
     <Link
@@ -83,6 +93,7 @@ export function CarCard({
               <Sparkles className="w-3 h-3" /> {L.promoTag}
             </Badge>
           )}
+          {pricingOffer ? <PricingOfferBadge offer={pricingOffer} /> : null}
           {car.isCommunityListing && (
             <Badge variant="outline" className="bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/30 text-[10px] px-2 py-0.5">
               Community host
@@ -106,11 +117,17 @@ export function CarCard({
             )}
           </div>
           <div className="text-right shrink-0">
+            {dayPrice.original != null ? (
+              <p className="text-xs text-muted-foreground line-through">{formatINR(dayPrice.original)}</p>
+            ) : null}
             <p className="text-lg sm:text-xl font-display font-bold text-primary leading-tight">
-              {formatINR(car.pricePerDay)}
+              {formatINR(dayPrice.price)}
             </p>
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Per day</p>
-            <p className="text-sm font-semibold text-foreground mt-1">{formatINR(car.pricePerHour)}</p>
+            {hourPrice.original != null ? (
+              <p className="text-[10px] text-muted-foreground line-through mt-1">{formatINR(hourPrice.original)}</p>
+            ) : null}
+            <p className="text-sm font-semibold text-foreground mt-1">{formatINR(hourPrice.price)}</p>
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Per hour</p>
           </div>
         </div>

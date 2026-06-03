@@ -18,6 +18,11 @@ import {
   hasBookingSearch,
   parseBookingSearchParams,
 } from "@/lib/booking-search-params";
+import {
+  normalizePricingOfferSettings,
+  DEFAULT_PRICING_OFFER_SETTINGS,
+} from "@/lib/pricing-offer-settings";
+import { PricingOfferBanner } from "@/components/pricing-offer-banner";
 
 interface Filters {
   location?: string;
@@ -169,6 +174,14 @@ function CarsContent() {
     queryKey: ["cars", filters],
     queryFn: () => apiFetch<CarData[]>(`/api/cars${qs ? `?${qs}` : ""}`),
   });
+  const { data: appConfig } = useQuery({
+    queryKey: ["app-config"],
+    queryFn: () => apiFetch<{ pricingOffer?: unknown }>("/api/config/public"),
+    staleTime: 60_000,
+  });
+  const pricingOffer = normalizePricingOfferSettings(
+    appConfig?.pricingOffer ?? DEFAULT_PRICING_OFFER_SETTINGS
+  );
 
   const cityCount = (city: string) =>
     allCars?.filter((c) => c.location?.toLowerCase() === city.toLowerCase()).length ?? 0;
@@ -205,6 +218,9 @@ function CarsContent() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+      <div className="mb-6">
+        <PricingOfferBanner offer={pricingOffer} compact />
+      </div>
 
       {/* City tabs */}
       <div className="mb-8">
@@ -326,7 +342,7 @@ function CarsContent() {
           ) : cars && cars.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
               {cars.map((car) => (
-                <CarCard key={car.id} car={car} bookingSearch={bookingSearch} />
+                <CarCard key={car.id} car={car} bookingSearch={bookingSearch} pricingOffer={pricingOffer} />
               ))}
             </div>
           ) : (

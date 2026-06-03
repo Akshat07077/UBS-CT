@@ -34,6 +34,11 @@ import {
   clampReturnTime,
 } from "@/lib/constants/booking-times";
 import { toast } from "@/hooks/use-toast";
+import { PricingOfferBanner } from "@/components/pricing-offer-banner";
+import {
+  normalizePricingOfferSettings,
+  DEFAULT_PRICING_OFFER_SETTINGS,
+} from "@/lib/pricing-offer-settings";
 
 const HOME_VIDEO_EMBED =
   typeof process.env.NEXT_PUBLIC_HOME_VIDEO_EMBED === "string"
@@ -84,6 +89,14 @@ export default function Home() {
     queryKey: ["cars", { available: true }],
     queryFn: () => apiFetch<CarData[]>("/api/cars?available=true"),
   });
+  const { data: appConfig } = useQuery({
+    queryKey: ["app-config"],
+    queryFn: () => apiFetch<{ pricingOffer?: unknown }>("/api/config/public"),
+    staleTime: 60_000,
+  });
+  const pricingOffer = normalizePricingOfferSettings(
+    appConfig?.pricingOffer ?? DEFAULT_PRICING_OFFER_SETTINGS
+  );
 
   const featuredCars = useMemo(() => {
     if (!cars?.length) return [];
@@ -345,6 +358,10 @@ export default function Home() {
         </div>
       </div>
 
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-2 pb-2">
+        <PricingOfferBanner offer={pricingOffer} />
+      </div>
+
       {/* Features */}
       <div className="py-14 md:py-24 bg-card border-y border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -403,7 +420,7 @@ export default function Home() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
               {mostBookedCars.map((car) => (
-                <CarCard key={car.id} car={car} />
+                <CarCard key={car.id} car={car} pricingOffer={pricingOffer} />
               ))}
             </div>
           </div>
@@ -436,7 +453,7 @@ export default function Home() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {featuredCars.map((car) => (
-                <CarCard key={car.id} car={car} />
+                <CarCard key={car.id} car={car} pricingOffer={pricingOffer} />
               ))}
             </div>
           )}
@@ -459,7 +476,7 @@ export default function Home() {
               <div className="space-y-5">
                 {[
                   { icon: IndianRupee, title: "Transparent INR Pricing", desc: "No hidden charges. What you see is what you pay, with all prices in Indian Rupees including GST." },
-                  { icon: Shield, title: "Zero Deposit Options", desc: "Book premium cars without a security deposit. We trust our verified members." },
+                  { icon: Shield, title: "Pickup Security", desc: "Leave your bike or scooty at pickup, or pay a refundable ₹20,000 cash deposit. Returned when you drop the car back." },
                   { icon: MapPin, title: "Doorstep Delivery", desc: "We deliver the car to your home, hotel, or office across all major Indian cities." },
                   { icon: Clock, title: "Flexible Rentals", desc: "Hourly, daily, or weekly rentals on your terms, with free cancellation up to 24 hours before pickup." },
                 ].map(({ icon: Icon, title, desc }) => (
