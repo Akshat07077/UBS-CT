@@ -237,4 +237,17 @@
   .admin-table-scroll {
     @apply luxury-scroll;
   }
+
+  /* Leaflet panes default to z-index 400+ and cover sibling dropdowns */
+  .map-location-picker-map .leaflet-container,
+  .map-location-picker-map .leaflet-pane,
+  .map-location-picker-map .leaflet-top,
+  .map-location-picker-map .leaflet-bottom,
+  .map-location-picker-map .leaflet-control {
+    z-index: 1 !important;
+  }
+
+  .map-location-picker-map .leaflet-marker-pane {
+    z-index: 2 !important;
+  }
 }
