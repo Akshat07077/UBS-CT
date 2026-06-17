@@ -1,5 +1,6 @@
 "use client";
 import { useState, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import { apiFetch } from "@/lib/api";
@@ -16,6 +17,16 @@ import { formatINR, type CarData } from "@/components/car-card";
 import { peerHostListingJson } from "@/lib/rental-listing";
 import { canPreviewImageUrl, uploadImageToApi } from "@/lib/upload-client";
 import { INDIA_CITY_OPTIONS, OTHER_CITY_OPTION, PAN_INDIA_CITY } from "@/lib/constants/india-cities";
+import {
+  handoverFromCar,
+  normalizeHandoverForSave,
+  type HandoverLocationValue,
+} from "@/lib/handover-location";
+
+const MapLocationPicker = dynamic(
+  () => import("@/components/map-location-picker").then((m) => m.MapLocationPicker),
+  { ssr: false, loading: () => <Skeleton className="h-64 w-full rounded-xl" /> }
+);
 
 export default function AdminCarsPage() {
   const queryClient = useQueryClient();
@@ -42,6 +53,7 @@ export default function AdminCarsPage() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingCar, setEditingCar] = useState<CarData | null>(null);
+  const [createFormKey, setCreateFormKey] = useState(0);
   const [viewFilter, setViewFilter] = useState<"all" | "pending">("all");
   const [deleteTarget, setDeleteTarget] = useState<CarData | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -79,7 +91,11 @@ export default function AdminCarsPage() {
   };
 
   const openEdit = (car: CarData) => { setEditingCar(car); setFormOpen(true); };
-  const openCreate = () => { setEditingCar(null); setFormOpen(true); };
+  const openCreate = () => {
+    setEditingCar(null);
+    setCreateFormKey((k) => k + 1);
+    setFormOpen(true);
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -101,9 +117,10 @@ export default function AdminCarsPage() {
               <DialogTitle className="text-2xl font-display">{editingCar ? "Edit Vehicle" : "Add New Vehicle"}</DialogTitle>
             </DialogHeader>
             <CarForm
-              key={editingCar?.id ?? "create"}
+              key={editingCar?.id ?? `create-${createFormKey}`}
               car={editingCar}
               onSuccess={() => {
+                if (!editingCar) setCreateFormKey((k) => k + 1);
                 setFormOpen(false);
                 queryClient.invalidateQueries({ queryKey: ["cars"] });
                 queryClient.invalidateQueries({ queryKey: ["cars", "admin", "moderation"] });
@@ -364,6 +381,7 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
       ? car.location
       : ""
   );
+  const [handover, setHandover] = useState<HandoverLocationValue>(() => handoverFromCar(car ?? {}));
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
@@ -426,6 +444,12 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
       advancePaymentOverridePercent: advancePercentRaw ? parseFloat(advancePercentRaw) : null,
     };
 
+    const handoverSaved = normalizeHandoverForSave({
+      handoverLocation: handover.address,
+      handoverLat: handover.lat,
+      handoverLng: handover.lng,
+    });
+
     const data = {
       brand: fd.get("brand"),
       model: fd.get("model"),
@@ -436,8 +460,9 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
       fuelType: fd.get("fuelType"),
       seats: parseInt(fd.get("seats") as string),
       location: resolvedCity,
-      pickupLocation: String(fd.get("pickupLocation") || "").trim() || null,
-      dropLocation: String(fd.get("dropLocation") || "").trim() || null,
+      handoverLocation: handoverSaved.pickupLocation,
+      handoverLat: handover.lat,
+      handoverLng: handover.lng,
       description: fd.get("description"),
       available: fd.get("available") === "true",
       imageUrl: urls[0] ?? null,
@@ -660,28 +685,7 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Pickup location</Label>
-          <Input
-            name="pickupLocation"
-            defaultValue={car?.pickupLocation ?? ""}
-            placeholder="e.g. Indore Airport, Sector 29 hub"
-            className="rounded-lg"
-          />
-          <p className="text-xs text-muted-foreground">Exact pickup point shown to customers on the car page.</p>
-        </div>
-        <div className="space-y-2">
-          <Label>Drop location</Label>
-          <Input
-            name="dropLocation"
-            defaultValue={car?.dropLocation ?? ""}
-            placeholder="e.g. Railway Station, or leave blank for same as pickup"
-            className="rounded-lg"
-          />
-          <p className="text-xs text-muted-foreground">Where the car is returned. Blank uses pickup location.</p>
-        </div>
-      </div>
+      <MapLocationPicker value={handover} onChange={setHandover} />
 
       <div className="space-y-2">
         <Label>Availability</Label>

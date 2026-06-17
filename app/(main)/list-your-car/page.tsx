@@ -1,19 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import Image from "next/image";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { brand } from "@/lib/brand/config";
 import { INDIA_CITY_OPTIONS, OTHER_CITY_OPTION, PAN_INDIA_CITY } from "@/lib/constants/india-cities";
+import {
+  EMPTY_HANDOVER_LOCATION,
+  normalizeHandoverForSave,
+  type HandoverLocationValue,
+} from "@/lib/handover-location";
 import { Car as CarIcon, CheckCircle2, Upload, Plus, X } from "lucide-react";
 import { canPreviewImageUrl, uploadImageToApi } from "@/lib/upload-client";
+
+const MapLocationPicker = dynamic(
+  () => import("@/components/map-location-picker").then((m) => m.MapLocationPicker),
+  { ssr: false, loading: () => <Skeleton className="h-64 w-full rounded-xl" /> }
+);
 
 type SubmitResponse = {
   id: number;
@@ -25,12 +36,30 @@ export default function ListYourCarPage() {
   const [done, setDone] = useState(false);
   const [refId, setRefId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   const [gallery, setGallery] = useState<string[]>([""]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const [selectedCity, setSelectedCity] = useState(PAN_INDIA_CITY);
   const [customCity, setCustomCity] = useState("");
+  const [handover, setHandover] = useState<HandoverLocationValue>(EMPTY_HANDOVER_LOCATION);
   const [cloudinaryReady, setCloudinaryReady] = useState<boolean | null>(null);
+
+  const resetListingForm = () => {
+    setGallery([""]);
+    setSelectedCity(PAN_INDIA_CITY);
+    setCustomCity("");
+    setHandover(EMPTY_HANDOVER_LOCATION);
+    setIsUploading(false);
+    setUploadingIndex(null);
+    setFormKey((k) => k + 1);
+  };
+
+  const startAnotherListing = () => {
+    setDone(false);
+    setRefId(null);
+    resetListingForm();
+  };
 
   useEffect(() => {
     fetch("/api/upload/status")
@@ -79,8 +108,22 @@ export default function ListYourCarPage() {
       setIsSubmitting(false);
       return;
     }
+    if (!handover.address.trim()) {
+      toast({
+        title: "Location required",
+        description: "Search or tap the map to set pickup & drop location.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
     const urls = gallery.map((u) => u.trim()).filter(Boolean);
     const finalImage = urls[0] ?? null;
+    const handoverSaved = normalizeHandoverForSave({
+      handoverLocation: handover.address,
+      handoverLat: handover.lat,
+      handoverLng: handover.lng,
+    });
     const payload = {
       ownerName: String(fd.get("ownerName") || "").trim(),
       ownerEmail: String(fd.get("ownerEmail") || "").trim(),
@@ -94,8 +137,9 @@ export default function ListYourCarPage() {
       fuelType: fd.get("fuelType"),
       seats: parseInt(String(fd.get("seats")), 10),
       location: resolvedCity,
-      pickupLocation: String(fd.get("pickupLocation") || "").trim() || null,
-      dropLocation: String(fd.get("dropLocation") || "").trim() || null,
+      handoverLocation: handoverSaved.pickupLocation,
+      handoverLat: handover.lat,
+      handoverLng: handover.lng,
       description: String(fd.get("description") || "").trim() || null,
       imageUrl: finalImage,
       images: urls,
@@ -133,7 +177,7 @@ export default function ListYourCarPage() {
               Back to fleet
             </Button>
           </Link>
-          <Button className="rounded-xl w-full sm:w-auto" onClick={() => { setDone(false); setRefId(null); }}>
+          <Button className="rounded-xl w-full sm:w-auto" onClick={startAnotherListing}>
             Submit another vehicle
           </Button>
         </div>
@@ -161,7 +205,7 @@ export default function ListYourCarPage() {
         </div>
       )}
 
-      <form onSubmit={onSubmit} className="space-y-10 bg-card border border-border/60 rounded-3xl p-6 md:p-8 shadow-sm">
+      <form key={formKey} onSubmit={onSubmit} className="space-y-10 bg-card border border-border/60 rounded-3xl p-6 md:p-8 shadow-sm">
         <div>
           <h2 className="text-lg font-display font-bold mb-4">Owner details</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -334,28 +378,8 @@ export default function ListYourCarPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-            <div className="space-y-2">
-              <Label htmlFor="pickupLocation">Pickup location</Label>
-              <Input
-                id="pickupLocation"
-                name="pickupLocation"
-                required
-                className="rounded-xl"
-                placeholder="e.g. Vijay Nagar, near City Mall"
-              />
-              <p className="text-xs text-muted-foreground">Where renters will collect the car.</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="dropLocation">Drop location</Label>
-              <Input
-                id="dropLocation"
-                name="dropLocation"
-                className="rounded-xl"
-                placeholder="Same as pickup, or another address"
-              />
-              <p className="text-xs text-muted-foreground">Leave blank if drop is at the same place.</p>
-            </div>
+          <div className="mt-4">
+            <MapLocationPicker value={handover} onChange={setHandover} required />
           </div>
 
           <div className="space-y-2 mt-4">

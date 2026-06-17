@@ -12,6 +12,10 @@ export const DEFAULT_RETURN_TIME = "10:00";
 /** Minimum lead time before pickup (same-day bookings). */
 export const MIN_BOOKING_LEAD_MINUTES = 30;
 
+/** Minimum rental duration (pickup → return). */
+export const MIN_RENTAL_HOURS = 5;
+export const MIN_RENTAL_HOURS_MESSAGE = "Minimum 5 hours of booking is required.";
+
 /** Local calendar date YYYY-MM-DD (avoids UTC off-by-one). */
 export function localDateYmd(d = new Date()): string {
   const y = d.getFullYear();
@@ -112,7 +116,10 @@ export function earliestPickupTimeOnDate(pickupDate: string, now = new Date()): 
 /** Earliest return time when return is the same day as pickup. */
 export function earliestReturnTimeSameDay(pickupTime: string): string {
   const [h, m] = pickupTime.split(":").map(Number);
-  const dt = new Date(2000, 0, 1, h, m + MIN_BOOKING_LEAD_MINUTES, 0, 0);
+  const dt = new Date(2000, 0, 1, h, m + MIN_RENTAL_HOURS * 60, 0, 0);
+  if (dt.getDate() !== 1) {
+    return BOOKING_TIME_SLOTS[BOOKING_TIME_SLOTS.length - 1];
+  }
   return ceilToBookingSlot(dt);
 }
 
@@ -151,6 +158,11 @@ export function validateBookingSchedule(
 
   if (returnDt.getTime() <= pickupDt.getTime()) {
     return "Return must be after pickup (date and time).";
+  }
+
+  const durationHours = (returnDt.getTime() - pickupDt.getTime()) / (1000 * 60 * 60);
+  if (durationHours < MIN_RENTAL_HOURS) {
+    return MIN_RENTAL_HOURS_MESSAGE;
   }
 
   return null;

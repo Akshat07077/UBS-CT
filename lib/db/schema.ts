@@ -69,8 +69,10 @@ export const carsTable = pgTable(
     location: text("location").notNull(),
     /** Specific pickup point shown to renters (e.g. airport, hotel, address). */
     pickupLocation: text("pickup_location"),
-    /** Drop-off point; if empty, pickup location is used in the UI. */
+    /** Drop-off point; mirrors pickup (same handover location). */
     dropLocation: text("drop_location"),
+    handoverLat: numeric("handover_lat", { precision: 10, scale: 7 }),
+    handoverLng: numeric("handover_lng", { precision: 10, scale: 7 }),
     description: text("description"),
     imageUrl: text("image_url"),
     /** Marketplace-style extras: supplier, tags, trip slabs, deposits (see `lib/rental-listing.ts`). */

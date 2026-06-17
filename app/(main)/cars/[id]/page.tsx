@@ -43,6 +43,7 @@ import {
   peakSeasonRangeLabel,
 } from "@/lib/pricing-uplift-settings";
 import { PricingOfferBanner } from "@/components/pricing-offer-banner";
+import { handoverFromCar, mapsLink } from "@/lib/handover-location";
 import {
   applyPricingOffer,
   adjustedListingPrice,
@@ -251,6 +252,8 @@ function CarDetailPage() {
     car.images && car.images.length > 0 ? car.images : car.imageUrl ? [car.imageUrl] : [];
   const dayPrice = adjustedListingPrice(car.pricePerDay, pricingOffer);
   const hourPrice = adjustedListingPrice(car.pricePerHour, pricingOffer);
+  const handover = handoverFromCar(car);
+  const handoverMapsUrl = mapsLink(handover);
 
   const handleBookNow = () => {
     if (!pickupDate || !returnDate) {
@@ -323,25 +326,26 @@ function CarDetailPage() {
               <div className="rounded-xl border border-border/50 bg-muted/30 p-4 mb-4 space-y-3">
                 <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <Navigation className="w-3.5 h-3.5" />
-                  Pickup &amp; drop
+                  Pickup &amp; drop location
                 </p>
-                <div className="grid sm:grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-lg bg-background/60 border border-border/40 px-3 py-2.5">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Pickup</p>
-                    <p className={car.pickupLocation ? "text-foreground font-medium" : "text-muted-foreground italic"}>
-                      {car.pickupLocation || "Pickup point will be shared after booking"}
-                    </p>
-                  </div>
-                  <div className="rounded-lg bg-background/60 border border-border/40 px-3 py-2.5">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Drop</p>
-                    <p
-                      className={
-                        car.dropLocation || car.pickupLocation ? "text-foreground font-medium" : "text-muted-foreground italic"
-                      }
+                <div className="rounded-lg bg-background/60 border border-border/40 px-3 py-2.5 text-sm">
+                  <p className={handover.address ? "text-foreground font-medium" : "text-muted-foreground italic"}>
+                    {handover.address || "Location will be shared after booking"}
+                  </p>
+                  {handover.address && (
+                    <p className="text-[11px] text-muted-foreground mt-1">Same point for pickup and return.</p>
+                  )}
+                  {handoverMapsUrl && (
+                    <a
+                      href={handoverMapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-primary font-semibold mt-2 hover:underline"
                     >
-                      {car.dropLocation || car.pickupLocation || "Drop point will be shared after booking"}
-                    </p>
-                  </div>
+                      <MapPin className="w-3.5 h-3.5" />
+                      View on map
+                    </a>
+                  )}
                 </div>
               </div>
 

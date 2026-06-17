@@ -7,6 +7,9 @@ import { peerHostListingJson } from "@/lib/rental-listing";
 import { formatAdminCar } from "@/lib/car-response";
 import { getGalleryUrlsByCarIds, replaceCarGallery } from "@/lib/db/car-images";
 import { createLead } from "@/lib/leads";
+import { normalizeHandoverForSave } from "@/lib/handover-location";
+
+const coordSchema = z.union([z.coerce.number(), z.null()]).optional();
 
 const createSchema = z.object({
   ownerName: z.string().trim().min(1).max(120),
@@ -21,8 +24,11 @@ const createSchema = z.object({
   fuelType: z.enum(["petrol", "diesel", "electric", "hybrid"]),
   seats: z.coerce.number().int().min(2).max(12),
   location: z.string().trim().min(1).max(120),
+  handoverLocation: z.string().trim().max(300).optional().nullable(),
   pickupLocation: z.string().trim().max(300).optional().nullable(),
   dropLocation: z.string().trim().max(300).optional().nullable(),
+  handoverLat: coordSchema,
+  handoverLng: coordSchema,
   description: z.string().trim().max(2000).optional().nullable(),
   imageUrl: z
     .union([z.string().trim().url().max(2000), z.literal(""), z.null()])
@@ -69,6 +75,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
     }
 
+    const handover = normalizeHandoverForSave(parsed.data);
+    if (!handover.pickupLocation) {
+      return NextResponse.json(
+        { error: { handoverLocation: ["Pickup & drop location is required."] } },
+        { status: 400 }
+      );
+    }
+
     const {
       ownerName,
       ownerEmail,
@@ -82,8 +96,6 @@ export async function POST(req: NextRequest) {
       fuelType,
       seats,
       location,
-      pickupLocation,
-      dropLocation,
       description,
       imageUrl,
       images,
@@ -114,8 +126,10 @@ export async function POST(req: NextRequest) {
         fuelType,
         seats,
         location,
-        pickupLocation: pickupLocation?.trim() || null,
-        dropLocation: dropLocation?.trim() || null,
+        pickupLocation: handover.pickupLocation,
+        dropLocation: handover.dropLocation,
+        handoverLat: handover.handoverLat,
+        handoverLng: handover.handoverLng,
         description: description || null,
         imageUrl: coverImage,
         listing,
@@ -147,8 +161,9 @@ export async function POST(req: NextRequest) {
         fuelType,
         seats,
         listingApprovalStatus: car.listingApprovalStatus,
-        pickupLocation: pickupLocation?.trim() || null,
-        dropLocation: dropLocation?.trim() || null,
+        handoverLocation: handover.pickupLocation,
+        handoverLat: handover.handoverLat,
+        handoverLng: handover.handoverLng,
       },
     });
 

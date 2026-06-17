@@ -26,6 +26,8 @@ export interface CarData {
   location: string;
   pickupLocation?: string | null;
   dropLocation?: string | null;
+  handoverLat?: number | null;
+  handoverLng?: number | null;
   description?: string | null;
   imageUrl: string | null;
   /** Gallery URLs (ordered); from API when present. */

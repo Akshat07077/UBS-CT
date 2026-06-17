@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { peerHostListingJson } from "@/lib/rental-listing";
 import { formatAdminCar, formatPublicCar, viewerOwnsCar } from "@/lib/car-response";
 import { getGalleryUrlsForCar, replaceCarGallery } from "@/lib/db/car-images";
+import { normalizeHandoverForSave } from "@/lib/handover-location";
 
 async function getActor(req: NextRequest) {
   const session = await getSession();
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
-const HOST_FIELDS = ["brand", "model", "year", "pricePerDay", "pricePerHour", "transmission", "fuelType", "seats", "location", "pickupLocation", "dropLocation", "description", "imageUrl", "available"] as const;
+const HOST_FIELDS = ["brand", "model", "year", "pricePerDay", "pricePerHour", "transmission", "fuelType", "seats", "location", "description", "imageUrl", "available"] as const;
 const ADMIN_FIELDS = [...HOST_FIELDS, "listing"] as const;
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -68,11 +69,19 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       if (body[f] !== undefined) {
         if (f === "year" || f === "seats") updates[f] = Number(body[f]);
         else if (f === "pricePerDay" || f === "pricePerHour") updates[f] = String(body[f]);
-        else if (f === "pickupLocation" || f === "dropLocation") {
-          const v = typeof body[f] === "string" ? body[f].trim() : body[f];
-          updates[f] = v || null;
-        } else updates[f] = body[f];
+        else updates[f] = body[f];
       }
+    }
+
+    const handoverTouched = ["handoverLocation", "pickupLocation", "dropLocation", "handoverLat", "handoverLng"].some(
+      (k) => body[k] !== undefined
+    );
+    if (handoverTouched) {
+      const h = normalizeHandoverForSave(body);
+      updates.pickupLocation = h.pickupLocation;
+      updates.dropLocation = h.dropLocation;
+      updates.handoverLat = h.handoverLat;
+      updates.handoverLng = h.handoverLng;
     }
 
     if (isAdmin && Array.isArray(body.images)) {

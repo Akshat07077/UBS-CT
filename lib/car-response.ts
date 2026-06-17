@@ -1,6 +1,12 @@
 import type { Car, User } from "@/lib/db";
 import { peerHostListingJson, defaultHourlyFromDaily, type CarListingJson } from "@/lib/rental-listing";
 
+function parseCoord(v: string | number | null | undefined): number | null {
+  if (v == null || v === "") return null;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 /** DB-only approval often leaves old promo/note in `listing` JSON; normalize for clients when row is approved. */
 function resolveListingForClient(car: Car): CarListingJson | null {
   const raw = car.listing;
@@ -50,6 +56,8 @@ function baseFields(car: Car, galleryUrls?: string[] | null) {
     location: car.location,
     pickupLocation: car.pickupLocation ?? null,
     dropLocation: car.dropLocation ?? null,
+    handoverLat: parseCoord(car.handoverLat),
+    handoverLng: parseCoord(car.handoverLng),
     description: car.description,
     imageUrl: images[0] ?? car.imageUrl ?? null,
     images,
