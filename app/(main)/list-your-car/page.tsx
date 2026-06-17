@@ -94,6 +94,8 @@ export default function ListYourCarPage() {
       fuelType: fd.get("fuelType"),
       seats: parseInt(String(fd.get("seats")), 10),
       location: resolvedCity,
+      pickupLocation: String(fd.get("pickupLocation") || "").trim() || null,
+      dropLocation: String(fd.get("dropLocation") || "").trim() || null,
       description: String(fd.get("description") || "").trim() || null,
       imageUrl: finalImage,
       images: urls,
@@ -329,6 +331,30 @@ export default function ListYourCarPage() {
                   onChange={(e) => setCustomCity(e.target.value)}
                 />
               )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="pickupLocation">Pickup location</Label>
+              <Input
+                id="pickupLocation"
+                name="pickupLocation"
+                required
+                className="rounded-xl"
+                placeholder="e.g. Vijay Nagar, near City Mall"
+              />
+              <p className="text-xs text-muted-foreground">Where renters will collect the car.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dropLocation">Drop location</Label>
+              <Input
+                id="dropLocation"
+                name="dropLocation"
+                className="rounded-xl"
+                placeholder="Same as pickup, or another address"
+              />
+              <p className="text-xs text-muted-foreground">Leave blank if drop is at the same place.</p>
             </div>
           </div>
 

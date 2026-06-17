@@ -21,6 +21,8 @@ const createSchema = z.object({
   fuelType: z.enum(["petrol", "diesel", "electric", "hybrid"]),
   seats: z.coerce.number().int().min(2).max(12),
   location: z.string().trim().min(1).max(120),
+  pickupLocation: z.string().trim().max(300).optional().nullable(),
+  dropLocation: z.string().trim().max(300).optional().nullable(),
   description: z.string().trim().max(2000).optional().nullable(),
   imageUrl: z
     .union([z.string().trim().url().max(2000), z.literal(""), z.null()])
@@ -80,6 +82,8 @@ export async function POST(req: NextRequest) {
       fuelType,
       seats,
       location,
+      pickupLocation,
+      dropLocation,
       description,
       imageUrl,
       images,
@@ -110,6 +114,8 @@ export async function POST(req: NextRequest) {
         fuelType,
         seats,
         location,
+        pickupLocation: pickupLocation?.trim() || null,
+        dropLocation: dropLocation?.trim() || null,
         description: description || null,
         imageUrl: coverImage,
         listing,
@@ -141,6 +147,8 @@ export async function POST(req: NextRequest) {
         fuelType,
         seats,
         listingApprovalStatus: car.listingApprovalStatus,
+        pickupLocation: pickupLocation?.trim() || null,
+        dropLocation: dropLocation?.trim() || null,
       },
     });
 
