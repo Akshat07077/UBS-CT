@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     if (!user || user.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const body = await req.json();
-    const { brand, model, year, pricePerDay, pricePerHour, transmission, fuelType, seats, location, description, imageUrl, available, listing } = body;
+    const { brand, model, year, pricePerDay, pricePerHour, transmission, fuelType, seats, location, pickupLocation, dropLocation, description, imageUrl, available, listing } = body;
 
     const [car] = await db
       .insert(carsTable)
@@ -100,6 +100,8 @@ export async function POST(req: NextRequest) {
         fuelType,
         seats: Number(seats),
         location,
+        pickupLocation: pickupLocation?.trim() || null,
+        dropLocation: dropLocation?.trim() || null,
         description: description || null,
         imageUrl: imageUrl || null,
         listing: listing ?? null,

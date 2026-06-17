@@ -24,6 +24,8 @@ export interface CarData {
   fuelType: string;
   seats: number;
   location: string;
+  pickupLocation?: string | null;
+  dropLocation?: string | null;
   description?: string | null;
   imageUrl: string | null;
   /** Gallery URLs (ordered); from API when present. */

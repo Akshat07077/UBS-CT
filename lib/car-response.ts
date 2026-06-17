@@ -48,6 +48,8 @@ function baseFields(car: Car, galleryUrls?: string[] | null) {
     fuelType: car.fuelType,
     seats: car.seats,
     location: car.location,
+    pickupLocation: car.pickupLocation ?? null,
+    dropLocation: car.dropLocation ?? null,
     description: car.description,
     imageUrl: images[0] ?? car.imageUrl ?? null,
     images,

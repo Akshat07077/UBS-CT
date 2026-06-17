@@ -436,6 +436,8 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
       fuelType: fd.get("fuelType"),
       seats: parseInt(fd.get("seats") as string),
       location: resolvedCity,
+      pickupLocation: String(fd.get("pickupLocation") || "").trim() || null,
+      dropLocation: String(fd.get("dropLocation") || "").trim() || null,
       description: fd.get("description"),
       available: fd.get("available") === "true",
       imageUrl: urls[0] ?? null,
@@ -655,6 +657,29 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
               className="rounded-lg"
             />
           )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Pickup location</Label>
+          <Input
+            name="pickupLocation"
+            defaultValue={car?.pickupLocation ?? ""}
+            placeholder="e.g. Indore Airport, Sector 29 hub"
+            className="rounded-lg"
+          />
+          <p className="text-xs text-muted-foreground">Exact pickup point shown to customers on the car page.</p>
+        </div>
+        <div className="space-y-2">
+          <Label>Drop location</Label>
+          <Input
+            name="dropLocation"
+            defaultValue={car?.dropLocation ?? ""}
+            placeholder="e.g. Railway Station, or leave blank for same as pickup"
+            className="rounded-lg"
+          />
+          <p className="text-xs text-muted-foreground">Where the car is returned. Blank uses pickup location.</p>
         </div>
       </div>
 

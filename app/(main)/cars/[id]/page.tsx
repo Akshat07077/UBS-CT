@@ -11,7 +11,7 @@ import { apiFetch } from "@/lib/api";
 import { brand } from "@/lib/brand/config";
 import { formatPhonesDisplay } from "@/lib/utils/phone";
 import { toast } from "@/hooks/use-toast";
-import { Users, Fuel, Settings2, MapPin, CheckCircle2, AlertCircle, Shield, Zap, Star, Phone, Building2, CalendarRange } from "lucide-react";
+import { Users, Fuel, Settings2, MapPin, CheckCircle2, AlertCircle, Shield, Zap, Star, Phone, Building2, CalendarRange, Navigation } from "lucide-react";
 import { formatINR, type CarData } from "@/components/car-card";
 import { computeRentalTotal, formatRentalDuration, rentalDurationHours } from "@/lib/rental-listing";
 import {
@@ -319,6 +319,32 @@ function CarDetailPage() {
               <p className="text-muted-foreground flex items-center gap-2 text-lg mb-4">
                 <MapPin className="w-5 h-5 text-primary" /> {car.location}
               </p>
+
+              <div className="rounded-xl border border-border/50 bg-muted/30 p-4 mb-4 space-y-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Navigation className="w-3.5 h-3.5" />
+                  Pickup &amp; drop
+                </p>
+                <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-lg bg-background/60 border border-border/40 px-3 py-2.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Pickup</p>
+                    <p className={car.pickupLocation ? "text-foreground font-medium" : "text-muted-foreground italic"}>
+                      {car.pickupLocation || "Pickup point will be shared after booking"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-background/60 border border-border/40 px-3 py-2.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Drop</p>
+                    <p
+                      className={
+                        car.dropLocation || car.pickupLocation ? "text-foreground font-medium" : "text-muted-foreground italic"
+                      }
+                    >
+                      {car.dropLocation || car.pickupLocation || "Drop point will be shared after booking"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {car.isCommunityListing && (
                 <div className="rounded-xl border border-violet-500/40 bg-violet-950/40 text-violet-50 px-4 py-3 text-sm backdrop-blur-md mb-4">
                   <span className="font-semibold">Community host listing</span>

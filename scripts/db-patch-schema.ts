@@ -22,6 +22,8 @@ const statements = [
   `ALTER TABLE cars DROP COLUMN IF EXISTS vehicle_type`,
   `ALTER TABLE cars ADD COLUMN IF NOT EXISTS price_per_hour numeric(10, 2)`,
   `UPDATE cars SET price_per_hour = GREATEST(1, ROUND(price_per_day / 24)) WHERE price_per_hour IS NULL`,
+  `ALTER TABLE cars ADD COLUMN IF NOT EXISTS pickup_location text`,
+  `ALTER TABLE cars ADD COLUMN IF NOT EXISTS drop_location text`,
 ];
 
 async function main() {

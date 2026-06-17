@@ -67,6 +67,10 @@ export const carsTable = pgTable(
     fuelType: fuelTypeEnum("fuel_type").notNull(),
     seats: integer("seats").notNull(),
     location: text("location").notNull(),
+    /** Specific pickup point shown to renters (e.g. airport, hotel, address). */
+    pickupLocation: text("pickup_location"),
+    /** Drop-off point; if empty, pickup location is used in the UI. */
+    dropLocation: text("drop_location"),
     description: text("description"),
     imageUrl: text("image_url"),
     /** Marketplace-style extras: supplier, tags, trip slabs, deposits (see `lib/rental-listing.ts`). */
