@@ -28,12 +28,12 @@ import {
   clampPickupTime,
   clampReturnTime,
   defaultPickupTimeForDate,
-  earliestPickupTimeOnDate,
-  earliestReturnTimeSameDay,
   formatBookingDateTime,
   formatDateDdMmYyyy,
   formatTime12h,
   localDateYmd,
+  minRentalHoursError,
+  MIN_RENTAL_HOURS_MESSAGE,
   validateBookingSchedule,
 } from "@/lib/constants/booking-times";
 import { parseBookingSearchParams } from "@/lib/booking-search-params";
@@ -129,10 +129,10 @@ function CarDetailPage() {
     urlSynced.current = true;
 
     const nextPickup = booking.pickup || pickupDate;
-    const nextReturn = booking.return || returnDate;
     const nextPickupTime = booking.pickupTime
       ? clampPickupTime(nextPickup, booking.pickupTime)
       : defaultPickupTimeForDate(nextPickup);
+    const nextReturn = booking.return || returnDate;
     const nextReturnTime = booking.returnTime
       ? clampReturnTime(nextPickup, nextPickupTime, nextReturn, booking.returnTime)
       : clampReturnTime(nextPickup, nextPickupTime, nextReturn, returnTime);
@@ -147,10 +147,6 @@ function CarDetailPage() {
     setPickupTime((t) => clampPickupTime(pickupDate, t));
   }, [pickupDate]);
 
-  useEffect(() => {
-    setReturnTime((rt) => clampReturnTime(pickupDate, pickupTime, returnDate, rt));
-  }, [pickupDate, pickupTime, returnDate]);
-
   const handlePickupDateChange = (next: string) => {
     setPickupDate(next);
     setPickupTime((t) => clampPickupTime(next, t));
@@ -159,12 +155,10 @@ function CarDetailPage() {
 
   const handleReturnDateChange = (next: string) => {
     setReturnDate(next);
-    setReturnTime((t) => clampReturnTime(pickupDate, pickupTime, next, t));
   };
 
   const handlePickupTimeChange = (next: string) => {
     setPickupTime(next);
-    setReturnTime((rt) => clampReturnTime(pickupDate, next, returnDate, rt));
   };
 
   const handleReturnTimeChange = (next: string) => {
@@ -202,9 +196,10 @@ function CarDetailPage() {
   );
 
   const today = localDateYmd();
-  const minPickupTime = earliestPickupTimeOnDate(pickupDate);
-  const minReturnTime =
-    returnDate === pickupDate ? earliestReturnTimeSameDay(pickupTime) : undefined;
+  const minHoursError =
+    pickupDate && returnDate && pickupTime && returnTime
+      ? minRentalHoursError(pickupDate, pickupTime, returnDate, returnTime)
+      : null;
   const rentalHours =
     pickupDate && returnDate && pickupTime && returnTime
       ? rentalDurationHours(pickupDate, pickupTime, returnDate, returnTime)
@@ -214,6 +209,8 @@ function CarDetailPage() {
     pickupDate && returnDate && pickupTime && returnTime
       ? validateBookingSchedule(pickupDate, pickupTime, returnDate, returnTime)
       : null;
+  const scheduleBannerError =
+    scheduleError && scheduleError !== MIN_RENTAL_HOURS_MESSAGE ? scheduleError : null;
   const datesInvalid = !!pickupDate && !!returnDate && returnDate < pickupDate;
   const showAvailabilityCheck =
     !!pickupDate && !!returnDate && !scheduleError && !datesInvalid;
@@ -427,7 +424,6 @@ function CarDetailPage() {
                     <BookingTimeSelect
                       value={pickupTime}
                       onChange={handlePickupTimeChange}
-                      minTime={minPickupTime}
                     />
                     <p className="text-[11px] text-muted-foreground">Selected: {formatTime12h(pickupTime)}</p>
                   </div>
@@ -453,7 +449,7 @@ function CarDetailPage() {
                     <BookingTimeSelect
                       value={returnTime}
                       onChange={handleReturnTimeChange}
-                      minTime={minReturnTime}
+                      hintMessage={minHoursError}
                     />
                     <p className="text-[11px] text-muted-foreground">Selected: {formatTime12h(returnTime)}</p>
                   </div>
@@ -514,9 +510,9 @@ function CarDetailPage() {
                         <span className="font-bold text-xl text-primary">{formatINR(total)}</span>
                       </div>
                     )}
-                    {scheduleError ? (
+                    {scheduleBannerError ? (
                       <p className="text-xs text-amber-600 mt-3 flex items-center justify-center gap-1.5 font-medium">
-                        <AlertCircle className="w-3.5 h-3.5" /> {scheduleError}
+                        <AlertCircle className="w-3.5 h-3.5" /> {scheduleBannerError}
                       </p>
                     ) : datesInvalid ? (
                       <p className="text-xs text-amber-600 mt-3 flex items-center justify-center gap-1.5 font-medium">

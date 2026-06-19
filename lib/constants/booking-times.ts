@@ -8,6 +8,7 @@ export const BOOKING_TIME_SLOTS = Array.from({ length: 36 }, (_, i) => {
 
 export const DEFAULT_PICKUP_TIME = "10:00";
 export const DEFAULT_RETURN_TIME = "10:00";
+export const LAST_BOOKING_SLOT = "23:30";
 
 /** Minimum lead time before pickup (same-day bookings). */
 export const MIN_BOOKING_LEAD_MINUTES = 30;
@@ -50,31 +51,35 @@ export function snapToBookingSlot(t: string, fallback = DEFAULT_PICKUP_TIME): st
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+/** Add calendar days to YYYY-MM-DD (local). */
+export function addDayToYmd(dateYmd: string, days: number): string {
+  const [y, mo, d] = dateYmd.split("-").map(Number);
+  if (!y || !mo || !d) return dateYmd;
+  const dt = new Date(y, mo - 1, d);
+  dt.setDate(dt.getDate() + days);
+  return localDateYmd(dt);
+}
+
 /** Slots on or after optional minimum time. */
 export function bookingSlotsFrom(minTime?: string): string[] {
   if (!minTime) return BOOKING_TIME_SLOTS;
+  if (!BOOKING_TIME_SLOTS.includes(minTime) && compareTime24(minTime, LAST_BOOKING_SLOT) > 0) {
+    return [];
+  }
   return BOOKING_TIME_SLOTS.filter((s) => compareTime24(s, minTime) >= 0);
 }
 
-export function clampPickupTime(dateYmd: string, time: string): string {
-  let t = snapToBookingSlot(time);
-  const min = earliestPickupTimeOnDate(dateYmd);
-  if (min && compareTime24(t, min) < 0) return min;
-  return t;
+export function clampPickupTime(_dateYmd: string, time: string): string {
+  return snapToBookingSlot(time);
 }
 
 export function clampReturnTime(
-  pickupYmd: string,
-  pickupT: string,
-  returnYmd: string,
+  _pickupYmd: string,
+  _pickupT: string,
+  _returnYmd: string,
   returnT: string
 ): string {
-  let t = snapToBookingSlot(returnT, DEFAULT_RETURN_TIME);
-  if (returnYmd === pickupYmd) {
-    const min = earliestReturnTimeSameDay(pickupT);
-    if (compareTime24(t, min) < 0) return min;
-  }
-  return t;
+  return snapToBookingSlot(returnT, DEFAULT_RETURN_TIME);
 }
 
 /** Pick a value that exists in `slots`, keeping current if valid else first slot. */
@@ -107,20 +112,24 @@ export function earliestPickupTimeOnDate(pickupDate: string, now = new Date()): 
   if (pickupDate !== localDateYmd(now)) return undefined;
   const earliest = new Date(now.getTime() + MIN_BOOKING_LEAD_MINUTES * 60_000);
   const slot = ceilToBookingSlot(earliest);
+  if (compareTime24(slot, LAST_BOOKING_SLOT) > 0) return undefined;
   if (!BOOKING_TIME_SLOTS.includes(slot)) {
-    return BOOKING_TIME_SLOTS[BOOKING_TIME_SLOTS.length - 1];
+    return LAST_BOOKING_SLOT;
   }
   return slot;
 }
 
-/** Earliest return time when return is the same day as pickup. */
-export function earliestReturnTimeSameDay(pickupTime: string): string {
-  const [h, m] = pickupTime.split(":").map(Number);
-  const dt = new Date(2000, 0, 1, h, m + MIN_RENTAL_HOURS * 60, 0, 0);
-  if (dt.getDate() !== 1) {
-    return BOOKING_TIME_SLOTS[BOOKING_TIME_SLOTS.length - 1];
-  }
-  return ceilToBookingSlot(dt);
+/** Earliest return time when return is the same day as pickup; undefined if 5h cannot fit by 11:30 PM. */
+export function earliestReturnTimeSameDay(pickupTime: string): string | undefined {
+  const parsed = parseTime24(pickupTime);
+  if (!parsed) return undefined;
+  const minReturnMinutes = parsed.h * 60 + parsed.m + MIN_RENTAL_HOURS * 60;
+  if (minReturnMinutes > 23 * 60 + 30) return undefined;
+  const h = Math.floor(minReturnMinutes / 60);
+  const m = minReturnMinutes % 60;
+  const slot = ceilToBookingSlot(new Date(2000, 0, 1, h, m));
+  if (compareTime24(slot, LAST_BOOKING_SLOT) > 0) return undefined;
+  return slot;
 }
 
 export function defaultPickupTimeForDate(pickupDate: string, now = new Date()): string {
@@ -165,6 +174,22 @@ export function validateBookingSchedule(
     return MIN_RENTAL_HOURS_MESSAGE;
   }
 
+  return null;
+}
+
+/** Inline hint when return time gives less than MIN_RENTAL_HOURS (pickup must be before return). */
+export function minRentalHoursError(
+  pickupDate: string,
+  pickupTime: string,
+  returnDate: string,
+  returnTime: string
+): string | null {
+  if (!pickupDate || !returnDate || !pickupTime || !returnTime) return null;
+  const pickupDt = parseBookingDateTime(pickupDate, pickupTime);
+  const returnDt = parseBookingDateTime(returnDate, returnTime);
+  if (!pickupDt || !returnDt || returnDt.getTime() <= pickupDt.getTime()) return null;
+  const durationHours = (returnDt.getTime() - pickupDt.getTime()) / (1000 * 60 * 60);
+  if (durationHours < MIN_RENTAL_HOURS) return MIN_RENTAL_HOURS_MESSAGE;
   return null;
 }
 

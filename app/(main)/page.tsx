@@ -26,12 +26,10 @@ import {
 } from "lucide-react";
 import {
   defaultPickupTimeForDate,
-  earliestPickupTimeOnDate,
-  earliestReturnTimeSameDay,
   localDateYmd,
   validateBookingSchedule,
   clampPickupTime,
-  clampReturnTime,
+  minRentalHoursError,
 } from "@/lib/constants/booking-times";
 import { toast } from "@/hooks/use-toast";
 import { PricingOfferBanner } from "@/components/pricing-offer-banner";
@@ -119,13 +117,14 @@ export default function Home() {
   const [returnDate, setReturnDate] = useState(tomorrow);
   const [returnTime, setReturnTime] = useState("10:00");
 
-  const minPickupTime = earliestPickupTimeOnDate(pickupDate);
-  const minReturnTime =
-    returnDate === pickupDate ? earliestReturnTimeSameDay(pickupTime) : undefined;
+  const minHoursError =
+    pickupDate && returnDate && pickupTime && returnTime
+      ? minRentalHoursError(pickupDate, pickupTime, returnDate, returnTime)
+      : null;
 
   useEffect(() => {
-    setReturnTime((rt) => clampReturnTime(pickupDate, pickupTime, returnDate, rt));
-  }, [pickupDate, pickupTime, returnDate]);
+    setPickupTime((t) => clampPickupTime(pickupDate, t));
+  }, [pickupDate]);
 
   const handlePickupDateChange = (next: string) => {
     setPickupDate(next);
@@ -139,7 +138,6 @@ export default function Home() {
 
   const handlePickupTimeChange = (next: string) => {
     setPickupTime(next);
-    setReturnTime((rt) => clampReturnTime(pickupDate, next, returnDate, rt));
   };
 
   const handleReturnTimeChange = (next: string) => {
@@ -308,7 +306,6 @@ export default function Home() {
                 <BookingTimeSelect
                   value={pickupTime}
                   onChange={handlePickupTimeChange}
-                  minTime={minPickupTime}
                   className="h-11"
                 />
               </div>
@@ -338,7 +335,7 @@ export default function Home() {
                 <BookingTimeSelect
                   value={returnTime}
                   onChange={handleReturnTimeChange}
-                  minTime={minReturnTime}
+                  hintMessage={minHoursError}
                   className="h-11"
                 />
               </div>
