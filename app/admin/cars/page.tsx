@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Car as CarIcon, Clock, ChevronUp, ChevronDown, GripVertical, Upload, AlertTriangle } from "lucide-react";
+import { Plus, Edit, Trash2, Car as CarIcon, Clock, ChevronUp, ChevronDown, GripVertical, Upload, AlertTriangle, Pause, Play } from "lucide-react";
 import { formatINR, type CarData } from "@/components/car-card";
 import { peerHostListingJson } from "@/lib/rental-listing";
 import { canPreviewImageUrl, uploadImageToApi } from "@/lib/upload-client";
@@ -57,6 +57,7 @@ export default function AdminCarsPage() {
   const [viewFilter, setViewFilter] = useState<"all" | "pending">("all");
   const [deleteTarget, setDeleteTarget] = useState<CarData | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [togglingAvailabilityId, setTogglingAvailabilityId] = useState<number | null>(null);
 
   const pendingCars = useMemo(
     () => cars?.filter((c) => c.listingApprovalStatus === "pending") ?? [],
@@ -95,6 +96,31 @@ export default function AdminCarsPage() {
     setEditingCar(null);
     setCreateFormKey((k) => k + 1);
     setFormOpen(true);
+  };
+
+  const toggleAvailability = async (car: CarData) => {
+    const nextAvailable = !car.available;
+    setTogglingAvailabilityId(car.id);
+    try {
+      await apiFetch(`/api/cars/${car.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ available: nextAvailable }),
+      });
+      queryClient.invalidateQueries({ queryKey: ["cars"] });
+      queryClient.invalidateQueries({ queryKey: ["cars", "admin", "moderation"] });
+      queryClient.invalidateQueries({ queryKey: ["car"] });
+      toast({
+        title: nextAvailable ? "Bookings resumed" : "Bookings paused",
+        description: nextAvailable
+          ? `${car.brand} ${car.model} is open for new bookings again.`
+          : `${car.brand} ${car.model} is marked for personal use. No new bookings.`,
+      });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Could not update availability";
+      toast({ title: "Update failed", description: msg, variant: "destructive" });
+    } finally {
+      setTogglingAvailabilityId(null);
+    }
   };
 
   return (
@@ -252,12 +278,42 @@ export default function AdminCarsPage() {
                     <div className="text-sm">{formatINR(car.pricePerHour)}<span className="text-[10px] font-normal text-muted-foreground"> /hr</span></div>
                   </td>
                   <td className="px-3 py-2.5 align-middle whitespace-nowrap">
-                    <Badge variant={car.available ? "default" : "secondary"} className={car.available ? "bg-green-500/10 text-green-600 hover:bg-green-500/20 shadow-none" : ""}>
-                      {car.available ? "Available" : "Unavailable"}
+                    <Badge
+                      variant={car.available ? "default" : "outline"}
+                      className={
+                        car.available
+                          ? "bg-green-500/10 text-green-600 hover:bg-green-500/20 shadow-none border-green-500/30"
+                          : "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-100"
+                      }
+                    >
+                      {car.available ? "Open for bookings" : "Paused · personal use"}
                     </Badge>
                   </td>
                   <td className="px-2 py-2 align-middle text-right sticky right-0 z-10 bg-card group-hover:bg-muted/30 border-l border-border/40 shadow-[-6px_0_10px_-6px_rgba(0,0,0,0.35)] whitespace-nowrap">
                     <div className="flex items-center justify-end gap-1">
+                    {car.listingApprovalStatus === "approved" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={togglingAvailabilityId === car.id}
+                        onClick={() => toggleAvailability(car)}
+                        className={`h-8 px-2 rounded-md gap-1 text-xs shrink-0 ${
+                          car.available
+                            ? "border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-700"
+                            : "border-green-500/40 hover:bg-green-500/10 hover:text-green-700"
+                        }`}
+                        title={car.available ? "Pause bookings (personal use)" : "Resume bookings"}
+                      >
+                        {togglingAvailabilityId === car.id ? (
+                          <Clock className="w-3.5 h-3.5 animate-spin" />
+                        ) : car.available ? (
+                          <Pause className="w-3.5 h-3.5" />
+                        ) : (
+                          <Play className="w-3.5 h-3.5" />
+                        )}
+                        <span className="hidden md:inline">{car.available ? "Pause" : "Resume"}</span>
+                      </Button>
+                    )}
                     {car.listingApprovalStatus === "pending" && (
                       <>
                         <Button size="sm" className="rounded-md h-7 px-2 text-xs" onClick={() => handleModerate(car.id, "approve")}>
@@ -687,12 +743,19 @@ function CarForm({ car, onSuccess }: { car: CarData | null; onSuccess: () => voi
 
       <MapLocationPicker value={handover} onChange={setHandover} />
 
-      <div className="space-y-2">
-        <Label>Availability</Label>
-        <select name="available" defaultValue={car?.available === false ? "false" : "true"} className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          <option value="true">Available for Rent</option>
-          <option value="false">Unavailable</option>
+      <div className="space-y-2 p-4 rounded-xl border border-border/60 bg-muted/20">
+        <Label>Booking availability</Label>
+        <select
+          name="available"
+          defaultValue={car?.available === false ? "false" : "true"}
+          className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <option value="true">Open for bookings</option>
+          <option value="false">Paused — personal use (no new bookings)</option>
         </select>
+        <p className="text-xs text-muted-foreground">
+          Paused cars stay on the website but customers cannot book them. Use this when the car is needed for personal use.
+        </p>
       </div>
 
       <div className="space-y-2">
