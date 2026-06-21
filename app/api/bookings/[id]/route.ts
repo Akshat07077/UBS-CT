@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, bookingsTable, carsTable, usersTable } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { getSession, formatUser } from "@/lib/auth";
-import { formatBooking, guestTokenMatches } from "@/lib/booking-service";
+import { formatBooking, guestTokenMatches, markPendingPaymentsPaidForBooking } from "@/lib/booking-service";
 
 function hostOwnsCar(
   car: typeof carsTable.$inferSelect,
@@ -91,6 +91,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       .where(eq(bookingsTable.id, Number(id)))
       .returning();
     if (!booking) return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+
+    if (status === "confirmed") {
+      await markPendingPaymentsPaidForBooking(booking.id);
+    }
 
     return NextResponse.json(formatBooking(booking));
   } catch (e) {

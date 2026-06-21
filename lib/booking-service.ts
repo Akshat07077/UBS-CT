@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { db, bookingsTable, carsTable, paymentsTable, usersTable } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { computeRentalTotal, driverDailyMidpoint, defaultHourlyFromDaily } from "@/lib/rental-listing";
 import { viewerOwnsCar } from "@/lib/car-response";
 import { DEFAULT_PICKUP_TIME, DEFAULT_RETURN_TIME, isValidBookingTime, validateBookingSchedule } from "@/lib/constants/booking-times";
@@ -35,6 +35,14 @@ export function guestTokenMatches(
   token: string | null | undefined
 ) {
   return !!booking.guestAccessToken && !!token && booking.guestAccessToken === token;
+}
+
+/** When admin confirms a booking, mark any pending payment records as paid. */
+export async function markPendingPaymentsPaidForBooking(bookingId: number) {
+  await db
+    .update(paymentsTable)
+    .set({ paymentStatus: "paid" })
+    .where(and(eq(paymentsTable.bookingId, bookingId), eq(paymentsTable.paymentStatus, "pending")));
 }
 
 export async function createBooking(input: {
