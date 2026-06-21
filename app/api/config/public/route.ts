@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { isPaymentsEnabled } from "@/lib/config/features";
 import {
   getBookingPaymentSettings,
   getPaymentQrSettings,
@@ -16,7 +15,6 @@ export async function GET() {
     getPaymentQrSettings(),
   ]);
   return NextResponse.json({
-    paymentsEnabled: isPaymentsEnabled(),
     qrPaymentEnabled: isQrPaymentConfigured(paymentQr),
     paymentQr,
     bookingPayments,

@@ -59,29 +59,30 @@ function ConfirmationContent() {
     return <div className="min-h-screen flex justify-center items-center">Booking not found.</div>;
   }
 
-  const isPaid = payment?.paymentStatus === "paid" || booking.status === "confirmed";
+  const isConfirmed = booking.status === "confirmed" || payment?.paymentStatus === "paid";
+  const awaitingReview = !!(qrSubmitted || booking.paymentScreenshotUrl) && !isConfirmed;
   const isGuest = !user;
 
   return (
     <div className="bg-muted/20 min-h-screen py-20 px-4">
       <div className="max-w-2xl mx-auto text-center">
-        <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg ${isPaid ? "bg-green-100 text-green-600 shadow-green-500/20" : "bg-yellow-100 text-yellow-600"}`}>
+        <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg ${isConfirmed ? "bg-green-100 text-green-600 shadow-green-500/20" : "bg-yellow-100 text-yellow-600"}`}>
           <CheckCircle2 className="w-12 h-12" />
         </div>
 
         <h1 className="text-4xl md:text-5xl font-display font-extrabold tracking-tight mb-4">
-          {qrSubmitted || booking.paymentScreenshotUrl
-            ? "Payment proof received!"
-            : isPaid
-              ? "Payment successful!"
+          {isConfirmed
+            ? "Booking confirmed!"
+            : awaitingReview
+              ? "Payment proof received!"
               : "Booking received!"}
         </h1>
         <p className="text-lg text-muted-foreground mb-12 max-w-lg mx-auto">
-          {qrSubmitted || booking.paymentScreenshotUrl
-            ? "We received your payment screenshot. Our team will verify it and confirm your booking shortly."
-            : isPaid
-              ? "Your reservation is confirmed. We'll reach you on the phone number you provided."
-              : "Your booking is pending. Complete payment or wait for our team to confirm on WhatsApp."}
+          {isConfirmed
+            ? "Your reservation is confirmed. We'll reach you on the phone number you provided."
+            : awaitingReview
+              ? "We received your payment screenshot. Our team will verify it and confirm your booking shortly."
+              : "Your booking is pending. Complete payment or contact us on WhatsApp."}
         </p>
 
         <div className="bg-card text-left p-8 rounded-3xl border border-border shadow-xl mb-10">

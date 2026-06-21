@@ -45,7 +45,7 @@ export const EXPORT_DATASETS: {
   {
     id: "payments",
     label: "Payments",
-    description: "Stripe payment records linked to bookings.",
+    description: "Payment records linked to bookings (QR / manual verification).",
     filename: "ubs-payments",
   },
 ];

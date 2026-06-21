@@ -37,7 +37,7 @@ import {
 import { BookingPaymentSummary, CollateralChoiceForm } from "@/components/booking-payment-summary";
 import type { CollateralType } from "@/lib/constants/collateral";
 import { differenceInDays } from "date-fns";
-import { CreditCard, MessageCircle, UserCheck, CheckCircle2, Upload, IdCard, FileText, QrCode } from "lucide-react";
+import { QrCode, MessageCircle, UserCheck, CheckCircle2, Upload, IdCard, FileText } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { canPreviewImageUrl, uploadBookingDocToApi } from "@/lib/upload-client";
 
@@ -142,7 +142,6 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
     queryKey: ["app-config"],
     queryFn: () =>
       apiFetch<{
-        paymentsEnabled: boolean;
         qrPaymentEnabled: boolean;
         paymentQr: PaymentQrSettings;
         bookingPayments: BookingPaymentSettings;
@@ -151,7 +150,6 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
       }>("/api/config/public"),
     staleTime: 60_000,
   });
-  const paymentsEnabled = appConfig?.paymentsEnabled ?? false;
   const qrPaymentEnabled = appConfig?.qrPaymentEnabled ?? false;
   const paymentQr = normalizePaymentQrSettings(appConfig?.paymentQr);
   const paymentSettings = normalizeBookingPaymentSettings(appConfig?.bookingPayments);
@@ -300,67 +298,44 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
   const handlePay = async () => {
     if (!validateForm()) return;
 
-    if (qrPaymentEnabled) {
-      if (!paymentScreenshotUrl) {
-        toast({
-          title: "Payment proof required",
-          description: "Scan the QR code, pay the amount, then upload a screenshot of the payment.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      try {
-        setBusy("pay");
-        const booking = await createBooking();
-        const token = booking.guestAccessToken;
-        onOpenChange(false);
-        const qs = new URLSearchParams();
-        if (token) qs.set("token", token);
-        qs.set("qr", "1");
-        router.push(`/booking/confirmation/${booking.id}?${qs.toString()}`);
-        toast({
-          title: "Booking submitted",
-          description: "We will verify your payment and confirm your booking shortly.",
-        });
-        setBusy(null);
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : "Could not complete booking";
-        toast({ title: "Booking failed", description: msg, variant: "destructive" });
-        queryClient.invalidateQueries({ queryKey: ["availability", String(car.id)] });
-        setBusy(null);
-      }
+    if (!qrPaymentEnabled) {
+      toast({
+        title: "Online payment unavailable",
+        description: "Use Book on WhatsApp to complete your reservation.",
+        variant: "destructive",
+      });
       return;
     }
 
-    if (paymentsEnabled) {
-      try {
-        setBusy("pay");
-        const booking = await createBooking();
-        const token = booking.guestAccessToken;
-
-        const session = await apiFetch<{ sessionUrl: string }>("/api/payments/create-session", {
-          method: "POST",
-          body: JSON.stringify({
-            bookingId: booking.id,
-            guestAccessToken: token,
-          }),
-        });
-        window.location.href = session.sessionUrl;
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : "Could not complete booking";
-        toast({ title: "Payment failed", description: msg, variant: "destructive" });
-        queryClient.invalidateQueries({ queryKey: ["availability", String(car.id)] });
-        setBusy(null);
-      }
+    if (!paymentScreenshotUrl) {
+      toast({
+        title: "Payment proof required",
+        description: "Scan the QR code, pay the amount, then upload a screenshot of the payment.",
+        variant: "destructive",
+      });
       return;
     }
 
-    toast({
-      title: "Online payment unavailable",
-      description: "Use Book on WhatsApp to complete your reservation.",
-      variant: "destructive",
-    });
+    try {
+      setBusy("pay");
+      const booking = await createBooking();
+      const token = booking.guestAccessToken;
+      onOpenChange(false);
+      const qs = new URLSearchParams();
+      if (token) qs.set("token", token);
+      qs.set("qr", "1");
+      router.push(`/booking/confirmation/${booking.id}?${qs.toString()}`);
+      toast({
+        title: "Booking submitted",
+        description: "We will verify your payment and confirm your booking shortly.",
+      });
+      setBusy(null);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Could not complete booking";
+      toast({ title: "Booking failed", description: msg, variant: "destructive" });
+      queryClient.invalidateQueries({ queryKey: ["availability", String(car.id)] });
+      setBusy(null);
+    }
   };
 
   const handleWhatsApp = async () => {
@@ -402,7 +377,7 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Book {carLabel}</DialogTitle>
           <p className="text-sm text-muted-foreground text-left">
-            No account needed. Upload ID proofs, share your details, then pay or WhatsApp.
+            Upload ID proofs, scan the QR to pay, upload your payment screenshot, or book on WhatsApp.
           </p>
         </DialogHeader>
 
@@ -559,9 +534,15 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
               url={paymentScreenshotUrl}
               uploading={uploadingDoc === "payment"}
               onUpload={(f) => handleDocUpload("payment", f)}
-              icon={CreditCard}
+              icon={QrCode}
             />
           </div>
+        )}
+
+        {!qrPaymentEnabled && (
+          <p className="text-xs text-center text-muted-foreground bg-muted/50 border border-border rounded-xl px-3 py-2">
+            QR payment is not set up yet. Use Book on WhatsApp to reserve.
+          </p>
         )}
 
         <div className="flex flex-col gap-3 pt-2">
@@ -569,20 +550,14 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
             size="lg"
             className="w-full h-12 rounded-xl font-bold"
             onClick={handlePay}
-            disabled={!!busy || !!uploadingDoc || (!qrPaymentEnabled && !paymentsEnabled)}
+            disabled={!!busy || !!uploadingDoc || !qrPaymentEnabled}
           >
-            <CreditCard className="w-4 h-4 mr-2" />
+            <QrCode className="w-4 h-4 mr-2" />
             {busy === "pay"
-              ? qrPaymentEnabled
-                ? "Submitting booking…"
-                : "Redirecting to payment…"
+              ? "Submitting booking…"
               : qrPaymentEnabled
-                ? `Submit booking · ${formatINR(payNowAmount)}`
-                : paymentsEnabled
-                  ? payNowAmount < grandTotal
-                    ? `Pay ${formatINR(payNowAmount)} now`
-                    : `Pay ${formatINR(payNowAmount)}`
-                  : "Pay online unavailable"}
+                ? `Pay ${formatINR(payNowAmount)} & submit`
+                : "Pay online unavailable"}
           </Button>
           <Button
             size="lg"
