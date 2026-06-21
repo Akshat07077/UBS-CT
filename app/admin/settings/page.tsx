@@ -12,8 +12,10 @@ import { toast } from "@/hooks/use-toast";
 import type { BookingPaymentSettings } from "@/lib/booking-payment-settings";
 import type { PricingUpliftSettings } from "@/lib/pricing-uplift-settings";
 import type { PricingOfferSettings } from "@/lib/pricing-offer-settings";
+import type { PaymentQrSettings } from "@/lib/payment-qr-settings";
 import { peakSeasonRangeLabel } from "@/lib/pricing-uplift-settings";
-import { Wallet, Shield, Save, TrendingUp, Tag } from "lucide-react";
+import { canPreviewImageUrl, uploadImageToApi } from "@/lib/upload-client";
+import { Wallet, Shield, Save, TrendingUp, Tag, QrCode, Upload } from "lucide-react";
 
 export default function AdminSettingsPage() {
   const queryClient = useQueryClient();
@@ -29,16 +31,23 @@ export default function AdminSettingsPage() {
     queryKey: ["admin-pricing-offer"],
     queryFn: () => apiFetch<PricingOfferSettings>("/api/admin/settings/pricing-offer"),
   });
+  const { data: qrData, isLoading: qrLoading } = useQuery<PaymentQrSettings>({
+    queryKey: ["admin-payment-qr"],
+    queryFn: () => apiFetch<PaymentQrSettings>("/api/admin/settings/payment-qr"),
+  });
 
   const [paymentForm, setPaymentForm] = useState<BookingPaymentSettings | null>(null);
   const [pricingForm, setPricingForm] = useState<PricingUpliftSettings | null>(null);
   const [offerForm, setOfferForm] = useState<PricingOfferSettings | null>(null);
+  const [qrForm, setQrForm] = useState<PaymentQrSettings | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingQr, setUploadingQr] = useState(false);
 
   const paymentSettings = paymentForm ?? paymentData;
   const pricingSettings = pricingForm ?? pricingData;
   const offerSettings = offerForm ?? offerData;
-  const loading = paymentsLoading || pricingLoading || offerLoading;
+  const qrSettings = qrForm ?? qrData;
+  const loading = paymentsLoading || pricingLoading || offerLoading || qrLoading;
 
   const updatePayment = <K extends keyof BookingPaymentSettings>(
     key: K,
@@ -55,9 +64,38 @@ export default function AdminSettingsPage() {
     setOfferForm((prev) => ({ ...(prev ?? offerData!), [key]: value }));
   };
 
+  const updateQr = <K extends keyof PaymentQrSettings>(key: K, value: PaymentQrSettings[K]) => {
+    setQrForm((prev) => ({ ...(prev ?? qrData!), [key]: value }));
+  };
+
+  const handleQrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploadingQr(true);
+      toast({ title: "Uploading QR code…" });
+      const data = await uploadImageToApi("/api/upload/image", file);
+      updateQr("qrCodeUrl", data.url);
+      updateQr("enabled", true);
+      toast({
+        title: data.placeholder ? "Placeholder used" : "QR code uploaded",
+        description: data.placeholder ? "Add Cloudinary keys for production uploads." : undefined,
+      });
+    } catch (err: unknown) {
+      toast({
+        title: "Upload failed",
+        description: err instanceof Error ? err.message : "Could not upload QR code",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingQr(false);
+      e.target.value = "";
+    }
+  };
+
   const onSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!paymentSettings || !pricingSettings || !offerSettings) return;
+    if (!paymentSettings || !pricingSettings || !offerSettings || !qrSettings) return;
     setSaving(true);
     try {
       await Promise.all([
@@ -73,15 +111,21 @@ export default function AdminSettingsPage() {
           method: "PUT",
           body: JSON.stringify(offerSettings),
         }),
+        apiFetch("/api/admin/settings/payment-qr", {
+          method: "PUT",
+          body: JSON.stringify(qrSettings),
+        }),
       ]);
       toast({ title: "Settings saved" });
       queryClient.invalidateQueries({ queryKey: ["admin-booking-payments"] });
       queryClient.invalidateQueries({ queryKey: ["admin-pricing-uplift"] });
       queryClient.invalidateQueries({ queryKey: ["admin-pricing-offer"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-payment-qr"] });
       queryClient.invalidateQueries({ queryKey: ["app-config"] });
       setPaymentForm(null);
       setPricingForm(null);
       setOfferForm(null);
+      setQrForm(null);
     } catch (err: unknown) {
       toast({
         title: "Save failed",
@@ -102,7 +146,7 @@ export default function AdminSettingsPage() {
         </p>
       </div>
 
-      {loading || !paymentSettings || !pricingSettings || !offerSettings ? (
+      {loading || !paymentSettings || !pricingSettings || !offerSettings || !qrSettings ? (
         <Skeleton className="h-[32rem] rounded-2xl" />
       ) : (
         <form onSubmit={onSave} className="bg-card border border-border rounded-2xl p-4 sm:p-6 space-y-8 shadow-sm">
@@ -460,6 +504,81 @@ export default function AdminSettingsPage() {
                   className="rounded-xl resize-none mt-2"
                 />
               </div>
+            </div>
+          </section>
+
+          <section className="space-y-4 border-t border-border pt-6">
+            <div className="flex items-center gap-2">
+              <QrCode className="w-5 h-5 text-primary" />
+              <h2 className="font-display font-bold text-lg">QR payment</h2>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Upload your UPI or bank QR code. Customers scan it during booking, pay, then upload a payment screenshot for verification.
+            </p>
+
+            <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+              <input
+                type="checkbox"
+                checked={qrSettings.enabled}
+                onChange={(e) => updateQr("enabled", e.target.checked)}
+                className="accent-primary"
+              />
+              Show QR payment on booking form
+            </label>
+
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row gap-4 items-start">
+                <div className="w-36 h-36 rounded-xl border border-border bg-white flex items-center justify-center overflow-hidden shrink-0 mx-auto sm:mx-0">
+                  {qrSettings.qrCodeUrl && canPreviewImageUrl(qrSettings.qrCodeUrl) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={qrSettings.qrCodeUrl} alt="Payment QR" className="w-full h-full object-contain p-2" />
+                  ) : (
+                    <QrCode className="w-12 h-12 text-muted-foreground/40" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-2 w-full">
+                  <Label htmlFor="qr-upload">QR code image</Label>
+                  <label
+                    htmlFor="qr-upload"
+                    className={`flex items-center justify-center gap-2 w-full min-h-[44px] px-4 rounded-xl border border-input bg-background text-sm font-medium cursor-pointer ${
+                      uploadingQr ? "opacity-60 pointer-events-none" : "hover:bg-muted/50"
+                    }`}
+                  >
+                    <Upload className="w-4 h-4 text-primary" />
+                    {uploadingQr ? "Uploading…" : qrSettings.qrCodeUrl ? "Replace QR image" : "Upload QR image"}
+                  </label>
+                  <input
+                    id="qr-upload"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/*"
+                    className="sr-only"
+                    disabled={uploadingQr}
+                    onChange={handleQrUpload}
+                  />
+                  {qrSettings.qrCodeUrl && (
+                    <p className="text-[11px] text-muted-foreground break-all">{qrSettings.qrCodeUrl}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Label on booking form</Label>
+              <Input
+                value={qrSettings.label}
+                onChange={(e) => updateQr("label", e.target.value)}
+                className="rounded-xl h-11"
+                placeholder="Scan to pay"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Instructions for customers</Label>
+              <Textarea
+                value={qrSettings.helpText}
+                onChange={(e) => updateQr("helpText", e.target.value)}
+                rows={2}
+                className="rounded-xl resize-none"
+              />
             </div>
           </section>
 

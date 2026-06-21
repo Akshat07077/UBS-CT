@@ -27,6 +27,7 @@ const statements = [
   `ALTER TABLE cars ADD COLUMN IF NOT EXISTS handover_lat numeric(10, 7)`,
   `ALTER TABLE cars ADD COLUMN IF NOT EXISTS handover_lng numeric(10, 7)`,
   `UPDATE cars SET drop_location = pickup_location WHERE drop_location IS NULL AND pickup_location IS NOT NULL`,
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_screenshot_url text`,
 ];
 
 async function main() {

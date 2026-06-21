@@ -16,10 +16,16 @@ import {
   normalizePricingOfferSettings,
   type PricingOfferSettings,
 } from "@/lib/pricing-offer-settings";
+import {
+  DEFAULT_PAYMENT_QR_SETTINGS,
+  normalizePaymentQrSettings,
+  type PaymentQrSettings,
+} from "@/lib/payment-qr-settings";
 
 export const BOOKING_PAYMENTS_KEY = "booking_payments";
 export const PRICING_UPLIFT_KEY = "pricing_uplift";
 export const PRICING_OFFER_KEY = "pricing_offer";
+export const PAYMENT_QR_KEY = "payment_qr";
 
 export async function getBookingPaymentSettings(): Promise<BookingPaymentSettings> {
   const [row] = await db
@@ -114,6 +120,39 @@ export async function setPricingOfferSettings(settings: PricingOfferSettings) {
   } else {
     await db.insert(siteSettingsTable).values({
       key: PRICING_OFFER_KEY,
+      value: normalized,
+    });
+  }
+  return normalized;
+}
+
+export async function getPaymentQrSettings(): Promise<PaymentQrSettings> {
+  const [row] = await db
+    .select()
+    .from(siteSettingsTable)
+    .where(eq(siteSettingsTable.key, PAYMENT_QR_KEY))
+    .limit(1);
+
+  if (!row?.value) return DEFAULT_PAYMENT_QR_SETTINGS;
+  return normalizePaymentQrSettings(row.value);
+}
+
+export async function setPaymentQrSettings(settings: PaymentQrSettings) {
+  const normalized = normalizePaymentQrSettings(settings);
+  const [existing] = await db
+    .select()
+    .from(siteSettingsTable)
+    .where(eq(siteSettingsTable.key, PAYMENT_QR_KEY))
+    .limit(1);
+
+  if (existing) {
+    await db
+      .update(siteSettingsTable)
+      .set({ value: normalized, updatedAt: new Date() })
+      .where(eq(siteSettingsTable.key, PAYMENT_QR_KEY));
+  } else {
+    await db.insert(siteSettingsTable).values({
+      key: PAYMENT_QR_KEY,
       value: normalized,
     });
   }

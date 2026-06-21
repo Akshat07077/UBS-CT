@@ -30,6 +30,7 @@ function formatRow(row: {
     guestEmail: row.booking.guestEmail,
     aadharUrl: row.booking.aadharUrl,
     drivingLicenseUrl: row.booking.drivingLicenseUrl,
+    paymentScreenshotUrl: row.booking.paymentScreenshotUrl,
     source: row.booking.source,
     adminNotes: row.booking.adminNotes,
   };
@@ -76,6 +77,7 @@ export async function POST(req: NextRequest) {
       guestEmail,
       aadharUrl,
       drivingLicenseUrl,
+      paymentScreenshotUrl,
       collateralType,
       collateralDetail,
     } = body;
@@ -103,6 +105,7 @@ export async function POST(req: NextRequest) {
       guestEmail,
       aadharUrl,
       drivingLicenseUrl,
+      paymentScreenshotUrl,
       collateralType,
       collateralDetail,
       currentUser,

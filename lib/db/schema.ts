@@ -141,6 +141,8 @@ export const bookingsTable = pgTable(
     guestEmail: text("guest_email"),
     aadharUrl: text("aadhar_url"),
     drivingLicenseUrl: text("driving_license_url"),
+    /** UPI / bank transfer proof uploaded by guest after QR payment. */
+    paymentScreenshotUrl: text("payment_screenshot_url"),
     /** One-time token for guest to view booking / pay without login. */
     guestAccessToken: text("guest_access_token"),
     createdAt: timestamp("created_at").notNull().defaultNow(),

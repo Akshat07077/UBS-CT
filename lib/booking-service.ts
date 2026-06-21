@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { db, bookingsTable, carsTable, usersTable } from "@/lib/db";
+import { db, bookingsTable, carsTable, paymentsTable, usersTable } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { computeRentalTotal, driverDailyMidpoint, defaultHourlyFromDaily } from "@/lib/rental-listing";
 import { viewerOwnsCar } from "@/lib/car-response";
@@ -49,6 +49,7 @@ export async function createBooking(input: {
   guestEmail?: string;
   aadharUrl?: string;
   drivingLicenseUrl?: string;
+  paymentScreenshotUrl?: string;
   collateralType?: CollateralType;
   collateralDetail?: string;
   currentUser?: User | null;
@@ -65,6 +66,7 @@ export async function createBooking(input: {
     guestEmail,
     aadharUrl,
     drivingLicenseUrl,
+    paymentScreenshotUrl,
     collateralType,
     collateralDetail,
     currentUser,
@@ -183,10 +185,20 @@ export async function createBooking(input: {
       guestEmail: guestEmail?.trim() || null,
       aadharUrl: aadharUrl.trim(),
       drivingLicenseUrl: drivingLicenseUrl.trim(),
+      paymentScreenshotUrl: paymentScreenshotUrl?.trim() || null,
       guestAccessToken,
       source: "website",
     })
     .returning();
+
+  if (paymentScreenshotUrl?.trim()) {
+    await db.insert(paymentsTable).values({
+      bookingId: booking.id,
+      amount: String(payNow),
+      paymentStatus: "pending",
+      stripeSessionId: "qr",
+    });
+  }
 
   const customerName =
     currentUser?.name?.trim() ||

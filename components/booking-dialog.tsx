@@ -30,10 +30,14 @@ import {
   normalizeBookingPaymentSettings,
   type BookingPaymentSettings,
 } from "@/lib/booking-payment-settings";
+import {
+  normalizePaymentQrSettings,
+  type PaymentQrSettings,
+} from "@/lib/payment-qr-settings";
 import { BookingPaymentSummary, CollateralChoiceForm } from "@/components/booking-payment-summary";
 import type { CollateralType } from "@/lib/constants/collateral";
 import { differenceInDays } from "date-fns";
-import { CreditCard, MessageCircle, UserCheck, CheckCircle2, Upload, IdCard, FileText, FlaskConical } from "lucide-react";
+import { CreditCard, MessageCircle, UserCheck, CheckCircle2, Upload, IdCard, FileText, QrCode } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { canPreviewImageUrl, uploadBookingDocToApi } from "@/lib/upload-client";
 
@@ -138,15 +142,18 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
     queryKey: ["app-config"],
     queryFn: () =>
       apiFetch<{
-        bookingSandbox: boolean;
         paymentsEnabled: boolean;
+        qrPaymentEnabled: boolean;
+        paymentQr: PaymentQrSettings;
         bookingPayments: BookingPaymentSettings;
         pricingUplift?: unknown;
         pricingOffer?: unknown;
       }>("/api/config/public"),
     staleTime: 60_000,
   });
-  const bookingSandbox = appConfig?.bookingSandbox ?? true;
+  const paymentsEnabled = appConfig?.paymentsEnabled ?? false;
+  const qrPaymentEnabled = appConfig?.qrPaymentEnabled ?? false;
+  const paymentQr = normalizePaymentQrSettings(appConfig?.paymentQr);
   const paymentSettings = normalizeBookingPaymentSettings(appConfig?.bookingPayments);
   const pricingUplift = normalizePricingUpliftSettings(
     appConfig?.pricingUplift ?? DEFAULT_PRICING_UPLIFT_SETTINGS
@@ -161,7 +168,8 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
   const [withDriver, setWithDriver] = useState(false);
   const [aadharUrl, setAadharUrl] = useState("");
   const [licenseUrl, setLicenseUrl] = useState("");
-  const [uploadingDoc, setUploadingDoc] = useState<"aadhar" | "license" | null>(null);
+  const [paymentScreenshotUrl, setPaymentScreenshotUrl] = useState("");
+  const [uploadingDoc, setUploadingDoc] = useState<"aadhar" | "license" | "payment" | null>(null);
   const [busy, setBusy] = useState<"pay" | "whatsapp" | null>(null);
   const [collateralType, setCollateralType] = useState<CollateralType | "">("");
   const [collateralDetail, setCollateralDetail] = useState("");
@@ -191,7 +199,7 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
       : grandTotal;
   const carLabel = `${car.brand} ${car.model}`;
 
-  const handleDocUpload = async (kind: "aadhar" | "license", file: File) => {
+  const handleDocUpload = async (kind: "aadhar" | "license" | "payment", file: File) => {
     try {
       setUploadingDoc(kind);
       const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
@@ -200,8 +208,16 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
       }
       const url = await uploadBookingDocToApi(file);
       if (kind === "aadhar") setAadharUrl(url);
-      else setLicenseUrl(url);
-      toast({ title: kind === "aadhar" ? "Aadhar uploaded" : "Licence uploaded" });
+      else if (kind === "license") setLicenseUrl(url);
+      else setPaymentScreenshotUrl(url);
+      toast({
+        title:
+          kind === "aadhar"
+            ? "Aadhar uploaded"
+            : kind === "license"
+              ? "Licence uploaded"
+              : "Payment proof uploaded",
+      });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Upload failed";
       toast({ title: "Upload failed", description: msg, variant: "destructive" });
@@ -269,6 +285,7 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
       drivingLicenseUrl: licenseUrl,
       collateralType: collateralType || undefined,
       collateralDetail: collateralType === "bike_scooty" ? collateralDetail.trim() : undefined,
+      paymentScreenshotUrl: paymentScreenshotUrl || undefined,
     };
     return apiFetch<{
       id: number;
@@ -282,40 +299,64 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
 
   const handlePay = async () => {
     if (!validateForm()) return;
+    if (paymentsEnabled) {
+      try {
+        setBusy("pay");
+        const booking = await createBooking();
+        const token = booking.guestAccessToken;
+
+        const session = await apiFetch<{ sessionUrl: string }>("/api/payments/create-session", {
+          method: "POST",
+          body: JSON.stringify({
+            bookingId: booking.id,
+            guestAccessToken: token,
+          }),
+        });
+        window.location.href = session.sessionUrl;
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Could not complete booking";
+        toast({ title: "Payment failed", description: msg, variant: "destructive" });
+        queryClient.invalidateQueries({ queryKey: ["availability", String(car.id)] });
+        setBusy(null);
+      }
+      return;
+    }
+
+    if (!qrPaymentEnabled) {
+      toast({
+        title: "Online payment unavailable",
+        description: "Use Book on WhatsApp to complete your reservation.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!paymentScreenshotUrl) {
+      toast({
+        title: "Payment proof required",
+        description: "Scan the QR code, pay the amount, then upload a screenshot of the payment.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setBusy("pay");
       const booking = await createBooking();
       const token = booking.guestAccessToken;
-
-      if (bookingSandbox) {
-        await apiFetch(`/api/bookings/${booking.id}/sandbox-confirm`, {
-          method: "POST",
-          body: JSON.stringify({ guestAccessToken: token }),
-        });
-        onOpenChange(false);
-        const qs = new URLSearchParams();
-        if (token) qs.set("token", token);
-        qs.set("sandbox", "1");
-        router.push(`/booking/confirmation/${booking.id}?${qs.toString()}`);
-        toast({
-          title: "Booking confirmed (test)",
-          description: "No payment charged in sandbox mode for testing.",
-        });
-        setBusy(null);
-        return;
-      }
-
-      const session = await apiFetch<{ sessionUrl: string }>("/api/payments/create-session", {
-        method: "POST",
-        body: JSON.stringify({
-          bookingId: booking.id,
-          guestAccessToken: token,
-        }),
+      onOpenChange(false);
+      const qs = new URLSearchParams();
+      if (token) qs.set("token", token);
+      qs.set("qr", "1");
+      router.push(`/booking/confirmation/${booking.id}?${qs.toString()}`);
+      toast({
+        title: "Booking submitted",
+        description: "We will verify your payment and confirm your booking shortly.",
       });
-      window.location.href = session.sessionUrl;
+      setBusy(null);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Could not complete booking";
-      toast({ title: bookingSandbox ? "Booking failed" : "Payment failed", description: msg, variant: "destructive" });
+      toast({ title: "Booking failed", description: msg, variant: "destructive" });
       queryClient.invalidateQueries({ queryKey: ["availability", String(car.id)] });
       setBusy(null);
     }
@@ -490,11 +531,36 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
           </div>
         </div>
 
-        {bookingSandbox && (
-          <p className="text-xs text-center text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2">
-            <FlaskConical className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
-            Test mode: bookings confirm without payment. Set ENABLE_PAYMENTS=true + Stripe keys for live checkout.
-          </p>
+        {qrPaymentEnabled && !paymentsEnabled && (
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <QrCode className="w-4 h-4 text-primary shrink-0" />
+              <p className="text-sm font-semibold">{paymentQr.label}</p>
+            </div>
+            <p className="text-xs text-muted-foreground leading-snug">{paymentQr.helpText}</p>
+            <div className="flex flex-col items-center gap-3">
+              <div className="rounded-xl border border-border bg-white p-3 shadow-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={paymentQr.qrCodeUrl}
+                  alt="Payment QR code"
+                  className="w-44 h-44 object-contain"
+                />
+              </div>
+              <p className="text-sm font-bold text-center">
+                Pay {formatINR(payNowAmount)}
+                {payNowAmount < grandTotal ? ` (advance · balance ${formatINR(grandTotal - payNowAmount)} at pickup)` : ""}
+              </p>
+            </div>
+            <DocUploadSlot
+              label="Payment screenshot"
+              hint="Upload a clear screenshot of your successful UPI / bank payment"
+              url={paymentScreenshotUrl}
+              uploading={uploadingDoc === "payment"}
+              onUpload={(f) => handleDocUpload("payment", f)}
+              icon={CreditCard}
+            />
+          </div>
         )}
 
         <div className="flex flex-col gap-3 pt-2">
@@ -502,22 +568,20 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
             size="lg"
             className="w-full h-12 rounded-xl font-bold"
             onClick={handlePay}
-            disabled={!!busy || !!uploadingDoc}
+            disabled={!!busy || !!uploadingDoc || (!paymentsEnabled && !qrPaymentEnabled)}
           >
-            {bookingSandbox ? (
-              <CheckCircle2 className="w-4 h-4 mr-2" />
-            ) : (
-              <CreditCard className="w-4 h-4 mr-2" />
-            )}
+            <CreditCard className="w-4 h-4 mr-2" />
             {busy === "pay"
-              ? bookingSandbox
-                ? "Confirming…"
-                : "Redirecting to payment…"
-              : bookingSandbox
-                ? "Confirm booking (test)"
-                : payNowAmount < grandTotal
+              ? paymentsEnabled
+                ? "Redirecting to payment…"
+                : "Submitting booking…"
+              : paymentsEnabled
+                ? payNowAmount < grandTotal
                   ? `Pay ${formatINR(payNowAmount)} now`
-                  : `Pay ${formatINR(payNowAmount)}`}
+                  : `Pay ${formatINR(payNowAmount)}`
+                : qrPaymentEnabled
+                  ? `Submit booking · ${formatINR(payNowAmount)}`
+                  : "Pay online unavailable"}
           </Button>
           <Button
             size="lg"

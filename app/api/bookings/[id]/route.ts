@@ -58,6 +58,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       guestEmail: row.booking.guestEmail,
       aadharUrl: row.booking.aadharUrl,
       drivingLicenseUrl: row.booking.drivingLicenseUrl,
+      paymentScreenshotUrl: row.booking.paymentScreenshotUrl,
     });
   } catch (e) {
     console.error(e);

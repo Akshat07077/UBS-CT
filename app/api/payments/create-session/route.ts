@@ -4,9 +4,14 @@ import { eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { guestTokenMatches } from "@/lib/booking-service";
 import Stripe from "stripe";
+import { isPaymentsEnabled } from "@/lib/config/features";
 
 export async function POST(req: NextRequest) {
   try {
+    if (!isPaymentsEnabled()) {
+      return NextResponse.json({ error: "Online payments are not enabled" }, { status: 503 });
+    }
+
     const { bookingId, guestAccessToken } = await req.json();
     if (!bookingId) return NextResponse.json({ error: "bookingId required" }, { status: 400 });
 
@@ -27,10 +32,7 @@ export async function POST(req: NextRequest) {
 
     if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (!stripeKey) return NextResponse.json({ error: "Stripe not configured" }, { status: 500 });
-
-    const stripe = new Stripe(stripeKey);
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
     const baseUrl = process.env.NEXT_PUBLIC_URL || `https://${process.env.VERCEL_URL}`;
     const tokenQuery = booking.guestAccessToken ? `&token=${booking.guestAccessToken}` : "";
 

@@ -24,6 +24,7 @@ interface BookingDetail {
   status: string;
   guestName?: string | null;
   guestPhone?: string | null;
+  paymentScreenshotUrl?: string | null;
   car?: { brand: string; model: string; location: string };
 }
 
@@ -35,7 +36,7 @@ function ConfirmationContent() {
   const { bookingId } = useParams<{ bookingId: string }>();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
-  const sandboxMode = searchParams.get("sandbox") === "1";
+  const qrSubmitted = searchParams.get("qr") === "1";
   const { user } = useAuth();
   const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : "";
 
@@ -69,15 +70,15 @@ function ConfirmationContent() {
         </div>
 
         <h1 className="text-4xl md:text-5xl font-display font-extrabold tracking-tight mb-4">
-          {sandboxMode
-            ? "Test booking confirmed!"
+          {qrSubmitted || booking.paymentScreenshotUrl
+            ? "Payment proof received!"
             : isPaid
               ? "Payment successful!"
               : "Booking received!"}
         </h1>
         <p className="text-lg text-muted-foreground mb-12 max-w-lg mx-auto">
-          {sandboxMode
-            ? "Sandbox mode. No payment was charged. Use this to test the full flow before going live with Stripe."
+          {qrSubmitted || booking.paymentScreenshotUrl
+            ? "We received your payment screenshot. Our team will verify it and confirm your booking shortly."
             : isPaid
               ? "Your reservation is confirmed. We'll reach you on the phone number you provided."
               : "Your booking is pending. Complete payment or wait for our team to confirm on WhatsApp."}

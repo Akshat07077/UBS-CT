@@ -15,16 +15,6 @@ export function isPaymentsEnabled(): boolean {
   return envTrue("ENABLE_PAYMENTS") && isStripeConfigured();
 }
 
-/**
- * Test bookings without Stripe: auto-confirm and skip checkout.
- * On when BOOKING_SANDBOX=true, or when payments are not enabled.
- */
-export function isBookingSandbox(): boolean {
-  if (envTrue("BOOKING_SANDBOX")) return true;
-  if (envTrue("DISABLE_BOOKING_SANDBOX")) return false;
-  return !isPaymentsEnabled();
-}
-
 /** @deprecated use isPaymentsEnabled() */
 export const features = {
   payments: isPaymentsEnabled(),

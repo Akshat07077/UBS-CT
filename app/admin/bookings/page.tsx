@@ -33,6 +33,7 @@ interface BookingRow {
   guestEmail?: string | null;
   aadharUrl?: string | null;
   drivingLicenseUrl?: string | null;
+  paymentScreenshotUrl?: string | null;
 }
 
 function getStatusClass(status: string) {
@@ -118,6 +119,11 @@ export default function AdminBookingsPage() {
                         {booking.drivingLicenseUrl && (
                           <a href={booking.drivingLicenseUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline">
                             Licence
+                          </a>
+                        )}
+                        {booking.paymentScreenshotUrl && (
+                          <a href={booking.paymentScreenshotUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-amber-700 hover:underline font-semibold">
+                            Payment proof
                           </a>
                         )}
                       </div>
