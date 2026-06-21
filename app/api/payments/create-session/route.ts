@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, bookingsTable, paymentsTable, usersTable } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { guestTokenMatches } from "@/lib/booking-service";
 import Stripe from "stripe";
 import { isPaymentsEnabled } from "@/lib/config/features";
+import { resolveAppBaseUrl, stripeErrorMessage } from "@/lib/payment-checkout";
 
 export async function POST(req: NextRequest) {
   try {
     if (!isPaymentsEnabled()) {
       return NextResponse.json({ error: "Online payments are not enabled" }, { status: 503 });
+    }
+
+    const stripeKey = process.env.STRIPE_SECRET_KEY?.trim();
+    if (!stripeKey) {
+      return NextResponse.json({ error: "Stripe is not configured" }, { status: 503 });
     }
 
     const { bookingId, guestAccessToken } = await req.json();
@@ -32,12 +38,37 @@ export async function POST(req: NextRequest) {
 
     if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-    const baseUrl = process.env.NEXT_PUBLIC_URL || `https://${process.env.VERCEL_URL}`;
+    const stripe = new Stripe(stripeKey);
+    const baseUrl = resolveAppBaseUrl(req);
     const tokenQuery = booking.guestAccessToken ? `&token=${booking.guestAccessToken}` : "";
 
     const chargeAmount =
       Number(booking.advanceAmount) > 0 ? Number(booking.advanceAmount) : Number(booking.totalPrice);
+    const unitAmount = Math.round(chargeAmount * 100);
+
+    if (!Number.isFinite(unitAmount) || unitAmount < 50) {
+      return NextResponse.json(
+        { error: "Payment amount is invalid or below the ₹0.50 minimum" },
+        { status: 400 }
+      );
+    }
+
+    const [existingPayment] = await db
+      .select()
+      .from(paymentsTable)
+      .where(and(eq(paymentsTable.bookingId, booking.id), eq(paymentsTable.paymentStatus, "pending")))
+      .limit(1);
+
+    if (existingPayment?.stripeSessionId?.startsWith("cs_")) {
+      try {
+        const existing = await stripe.checkout.sessions.retrieve(existingPayment.stripeSessionId);
+        if (existing.status === "open" && existing.url) {
+          return NextResponse.json({ sessionUrl: existing.url, sessionId: existing.id });
+        }
+      } catch {
+        // Session expired or invalid — create a fresh checkout below.
+      }
+    }
 
     const stripeSession = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -51,7 +82,7 @@ export async function POST(req: NextRequest) {
                   ? `Booking advance #${booking.id}`
                   : `Rental booking #${booking.id}`,
             },
-            unit_amount: Math.round(chargeAmount * 100),
+            unit_amount: unitAmount,
           },
           quantity: 1,
         },
@@ -62,16 +93,35 @@ export async function POST(req: NextRequest) {
       metadata: { bookingId: String(booking.id) },
     });
 
-    await db.insert(paymentsTable).values({
-      bookingId: booking.id,
-      amount: String(chargeAmount),
-      paymentStatus: "pending",
-      stripeSessionId: stripeSession.id,
-    });
+    if (!stripeSession.url) {
+      return NextResponse.json({ error: "Could not create checkout session" }, { status: 502 });
+    }
+
+    if (existingPayment) {
+      await db
+        .update(paymentsTable)
+        .set({
+          amount: String(chargeAmount),
+          stripeSessionId: stripeSession.id,
+        })
+        .where(eq(paymentsTable.id, existingPayment.id));
+    } else {
+      await db.insert(paymentsTable).values({
+        bookingId: booking.id,
+        amount: String(chargeAmount),
+        paymentStatus: "pending",
+        stripeSessionId: stripeSession.id,
+      });
+    }
 
     return NextResponse.json({ sessionUrl: stripeSession.url, sessionId: stripeSession.id });
   } catch (e) {
-    console.error(e);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("create-session error:", e);
+    const message = stripeErrorMessage(e);
+    const isStripe = e instanceof Stripe.errors.StripeError;
+    return NextResponse.json(
+      { error: isStripe ? message : message === "Payment gateway error" ? "Internal server error" : message },
+      { status: isStripe ? 502 : 500 }
+    );
   }
 }

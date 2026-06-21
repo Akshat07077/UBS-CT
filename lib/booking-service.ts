@@ -204,7 +204,7 @@ export async function createBooking(input: {
       bookingId: booking.id,
       amount: String(payNow),
       paymentStatus: "pending",
-      stripeSessionId: "qr",
+      stripeSessionId: `qr-${booking.id}`,
     });
   }
 

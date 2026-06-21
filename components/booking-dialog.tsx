@@ -299,6 +299,40 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
 
   const handlePay = async () => {
     if (!validateForm()) return;
+
+    if (qrPaymentEnabled) {
+      if (!paymentScreenshotUrl) {
+        toast({
+          title: "Payment proof required",
+          description: "Scan the QR code, pay the amount, then upload a screenshot of the payment.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      try {
+        setBusy("pay");
+        const booking = await createBooking();
+        const token = booking.guestAccessToken;
+        onOpenChange(false);
+        const qs = new URLSearchParams();
+        if (token) qs.set("token", token);
+        qs.set("qr", "1");
+        router.push(`/booking/confirmation/${booking.id}?${qs.toString()}`);
+        toast({
+          title: "Booking submitted",
+          description: "We will verify your payment and confirm your booking shortly.",
+        });
+        setBusy(null);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Could not complete booking";
+        toast({ title: "Booking failed", description: msg, variant: "destructive" });
+        queryClient.invalidateQueries({ queryKey: ["availability", String(car.id)] });
+        setBusy(null);
+      }
+      return;
+    }
+
     if (paymentsEnabled) {
       try {
         setBusy("pay");
@@ -322,44 +356,11 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
       return;
     }
 
-    if (!qrPaymentEnabled) {
-      toast({
-        title: "Online payment unavailable",
-        description: "Use Book on WhatsApp to complete your reservation.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!paymentScreenshotUrl) {
-      toast({
-        title: "Payment proof required",
-        description: "Scan the QR code, pay the amount, then upload a screenshot of the payment.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      setBusy("pay");
-      const booking = await createBooking();
-      const token = booking.guestAccessToken;
-      onOpenChange(false);
-      const qs = new URLSearchParams();
-      if (token) qs.set("token", token);
-      qs.set("qr", "1");
-      router.push(`/booking/confirmation/${booking.id}?${qs.toString()}`);
-      toast({
-        title: "Booking submitted",
-        description: "We will verify your payment and confirm your booking shortly.",
-      });
-      setBusy(null);
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Could not complete booking";
-      toast({ title: "Booking failed", description: msg, variant: "destructive" });
-      queryClient.invalidateQueries({ queryKey: ["availability", String(car.id)] });
-      setBusy(null);
-    }
+    toast({
+      title: "Online payment unavailable",
+      description: "Use Book on WhatsApp to complete your reservation.",
+      variant: "destructive",
+    });
   };
 
   const handleWhatsApp = async () => {
@@ -531,7 +532,7 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
           </div>
         </div>
 
-        {qrPaymentEnabled && !paymentsEnabled && (
+        {qrPaymentEnabled && (
           <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
             <div className="flex items-center gap-2">
               <QrCode className="w-4 h-4 text-primary shrink-0" />
@@ -568,19 +569,19 @@ export function BookingDialog({ open, onOpenChange, car, pickupDate, returnDate,
             size="lg"
             className="w-full h-12 rounded-xl font-bold"
             onClick={handlePay}
-            disabled={!!busy || !!uploadingDoc || (!paymentsEnabled && !qrPaymentEnabled)}
+            disabled={!!busy || !!uploadingDoc || (!qrPaymentEnabled && !paymentsEnabled)}
           >
             <CreditCard className="w-4 h-4 mr-2" />
             {busy === "pay"
-              ? paymentsEnabled
-                ? "Redirecting to payment…"
-                : "Submitting booking…"
-              : paymentsEnabled
-                ? payNowAmount < grandTotal
-                  ? `Pay ${formatINR(payNowAmount)} now`
-                  : `Pay ${formatINR(payNowAmount)}`
-                : qrPaymentEnabled
-                  ? `Submit booking · ${formatINR(payNowAmount)}`
+              ? qrPaymentEnabled
+                ? "Submitting booking…"
+                : "Redirecting to payment…"
+              : qrPaymentEnabled
+                ? `Submit booking · ${formatINR(payNowAmount)}`
+                : paymentsEnabled
+                  ? payNowAmount < grandTotal
+                    ? `Pay ${formatINR(payNowAmount)} now`
+                    : `Pay ${formatINR(payNowAmount)}`
                   : "Pay online unavailable"}
           </Button>
           <Button
