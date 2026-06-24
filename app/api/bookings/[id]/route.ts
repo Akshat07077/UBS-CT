@@ -3,6 +3,7 @@ import { db, bookingsTable, carsTable, usersTable } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { getSession, formatUser } from "@/lib/auth";
 import { formatBooking, guestTokenMatches, markPendingPaymentsPaidForBooking } from "@/lib/booking-service";
+import { formatReservationHandoverContact } from "@/lib/booking-reservation-details";
 
 function hostOwnsCar(
   car: typeof carsTable.$inferSelect,
@@ -41,6 +42,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+    let hostUser: typeof usersTable.$inferSelect | null = null;
+    if (row.car?.hostUserId) {
+      const [host] = await db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.id, row.car.hostUserId))
+        .limit(1);
+      hostUser = host ?? null;
+    }
+
+    const handover = row.car ? formatReservationHandoverContact(row.car, hostUser) : null;
+
     return NextResponse.json({
       ...formatBooking(row.booking),
       car: row.car
@@ -50,6 +63,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             location: row.car.location,
             imageUrl: row.car.imageUrl,
             pricePerDay: Number(row.car.pricePerDay),
+            pickupLocation: handover!.pickupLocation,
+            dropLocation: handover!.dropLocation,
+            contactName: handover!.contactName,
+            contactPhone: handover!.contactPhone,
+            contactEmail: handover!.contactEmail,
+            contactRole: handover!.contactRole,
           }
         : undefined,
       user: row.user ? formatUser(row.user) : undefined,
